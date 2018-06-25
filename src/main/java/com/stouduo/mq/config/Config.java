@@ -17,6 +17,7 @@ public class Config {
     public static final String CONSUMER_QUEUE_STORE_UNIT_COUNT = "consumer.queue.store.unit.count";
     public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
+    public static final String COUNT_PER_CONSUMER_QUEUE = "count.per.consumer.queue";
     public static final int CONSUMER_QUEUE_STORE_UNIT_SIZE = 12;
     public static int defaultStoreSize = 1024 * 1024 * 1024;
     public static int defaultFlushInterval = 1000;
@@ -29,11 +30,12 @@ public class Config {
 
     public static String rootPath = getOrDefaultValue(MQ_STORE_ROOT_PATH, System.getProperty("user.home") + File.separator + "alidata1" + File.separator + "race2018" + File.separator + "data");
     public static String consumerStorePath = getOrDefaultValue(CONSUMER_QUEUE_STORE_PATH, File.separator + "consumerqueue");
-    public static String mqStorePath = getOrDefaultValue(MQ_STORE_PATH, File.separator + "mq");
+    public static String mqStorePath = getOrDefaultValue(MQ_STORE_PATH, File.separator + "mqstore");
     public static int mqStoreFileSize = Integer.parseInt(getOrDefaultValue(MQ_STORE_MAPPED_FILE_SIZE, defaultStoreSize + ""));
     public static int fileFlushInterval = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_INTERVAL, defaultFlushInterval + ""));
     public static int fileFlushSize = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_SIZE, defaultFlushSize + ""));
     public static int consumerStoreUnitCount = Integer.parseInt(getOrDefaultValue(CONSUMER_QUEUE_STORE_UNIT_COUNT, 300000 + ""));
+    public static int countPerConsumerQueues = Integer.parseInt(getOrDefaultValue(COUNT_PER_CONSUMER_QUEUE, 20 + ""));
 
     public static void main(String[] args) {
         System.out.println(configs.toString());
