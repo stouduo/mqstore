@@ -2,6 +2,7 @@ package com.stouduo.mq.service;
 
 import com.stouduo.mq.config.Config;
 import com.stouduo.mq.model.ConsumerQueue;
+import com.stouduo.mq.util.ByteUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -11,18 +12,16 @@ public class ConsumerQueueService {
     private static int countPerConsumerQueues = Config.countPerConsumerQueues;
 
     public long[] get(long queueId, int count) {
-        byte[] ret = consumerQueues.get((int) queueId % countPerConsumerQueues).get(count);
-        long[] retL = {ret[0] & 0xFF, ret[1] & 0xFF};
+        byte[] ret = consumerQueues.get((int) queueId / countPerConsumerQueues).get(count);
+        long[] retL = {ByteUtil.bytes2Long(ret, 0), ByteUtil.bytes2Int(ret, 8)};
         return retL;
     }
 
-    public int put(long queueId, long offset, int size) {
-        int index = (int) queueId % countPerConsumerQueues;
+    public synchronized int put(long queueId, long offset, int size) {
+        int index = (int) queueId / countPerConsumerQueues;
+        int createCount = index - consumerQueues.size();
+        while (createCount-- >= 0) consumerQueues.add(new ConsumerQueue(consumerQueues.size()));
         ConsumerQueue consumerQueue = consumerQueues.get(index);
-        if (consumerQueue == null) {
-            consumerQueue = new ConsumerQueue();
-            consumerQueues.add(consumerQueue);
-        }
         return consumerQueue.put(offset, size);
     }
 }

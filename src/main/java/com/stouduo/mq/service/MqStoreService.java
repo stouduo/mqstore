@@ -37,14 +37,14 @@ public class MqStoreService {
         return file;
     }
 
-    public long put(byte[] message) {
+    public synchronized long put(byte[] message) {
         MappedFile writableFile = storeFiles.get(storeFiles.size() - 1);
-        long retOffset = logicOffset;
+        long retOffset = logicOffset, fileOffset = logicOffset % storeFileSize;
         try {
-            if (offsetOutOfBound(logicOffset, message.length)) {
-                writableFile.appendData(message, 0, (int) (storeFileSize - logicOffset));
+            if (offsetOutOfBound(fileOffset, message.length)) {
+                writableFile.appendData(message, 0, (int) (storeFileSize - fileOffset));
                 writableFile = create();
-                writableFile.appendData(message, (int) (storeFileSize - logicOffset + 1), (int) (logicOffset + message.length - storeFileSize));
+                writableFile.appendData(message, (int) (storeFileSize - fileOffset + 1), (int) (fileOffset + message.length - storeFileSize));
                 storeFiles.add(writableFile);
             } else {
                 writableFile.appendData(message);

@@ -45,6 +45,8 @@ public class MappedFile {
         super();
         this.fileName = fileName;
         this.fileDirPath = fileDirPath;
+        this.file = new File(fileDirPath);
+        if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
         if (!file.exists()) {
             try {
@@ -74,7 +76,7 @@ public class MappedFile {
 
         try {
             this.mappedByteBuffer = this.fileChannel
-                    .map(FileChannel.MapMode.READ_WRITE, 0, MAX_FILE_SIZE);
+                    .map(FileChannel.MapMode.READ_WRITE, 0, fileSize);
         } catch (IOException e) {
             e.printStackTrace();
             this.boundSuccess = false;

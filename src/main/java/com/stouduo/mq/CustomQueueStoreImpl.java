@@ -1,6 +1,5 @@
 package com.stouduo.mq;
 
-import com.stouduo.mq.model.Message;
 import com.stouduo.mq.service.MessageStoreService;
 import com.stouduo.mq.service.MessageStoreServiceImpl;
 
@@ -15,7 +14,7 @@ public class CustomQueueStoreImpl extends QueueStore {
 
     @Override
     public void put(String queueName, String message) {
-        messageStoreService.store(new Message(queueName, message));
+        messageStoreService.store(queueName, message);
     }
 
     @Override

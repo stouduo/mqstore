@@ -15,17 +15,17 @@ public class DemoTester {
     public static void main(String args[]) throws Exception {
         //评测相关配置
         //发送阶段的发送数量，也即发送阶段必须要在规定时间内把这些消息发送完毕方可
-        int msgNum  =20000000;
+        int msgNum  =1000;
         //发送阶段的最大持续时间，也即在该时间内，如果消息依然没有发送完毕，则退出评测
         int sendTime = 10 * 60 * 1000;
         //消费阶段的最大持续时间，也即在该时间内，如果消息依然没有消费完毕，则退出评测
         int checkTime = 10 * 60 * 1000;
         //队列的数量
-        int queueNum = 10000;
+        int queueNum = 10;
         //正确性检测的次数
         int checkNum = 1000;
         //消费阶段的总队列数量
-        int checkQueueNum = 2000;
+        int checkQueueNum = 2;
         //发送的线程数量
         int sendTsNum = 3;
         //消费的线程数量
@@ -39,7 +39,7 @@ public class DemoTester {
         QueueStore queueStore = null;
 
         try {
-            Class queueStoreClass = Class.forName("io.openmessaging.DefaultQueueStoreImpl");
+            Class queueStoreClass = Class.forName("com.stouduo.mq.CustomQueueStoreImpl");
             queueStore = (QueueStore)queueStoreClass.newInstance();
         } catch (Throwable t) {
             t.printStackTrace();
