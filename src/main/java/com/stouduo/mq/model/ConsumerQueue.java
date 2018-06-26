@@ -2,6 +2,7 @@ package com.stouduo.mq.model;
 
 import com.stouduo.mq.config.Config;
 import com.stouduo.mq.service.MqStoreService;
+import com.stouduo.mq.util.ByteUtil;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;
@@ -36,11 +37,12 @@ public class ConsumerQueue {
         MappedFile writableFile = queues.get(queues.size() - 1);
         int retCount = logicUnitCount.get();
         try {
-            if (retCount % queueUnitCount == 0) {
+            if (retCount != 0 && retCount % queueUnitCount == 0) {
                 writableFile = create();
                 queues.add(writableFile);
             }
-            writableFile.appendData(new byte[]{(byte) offset, (byte) size});
+            writableFile.appendData(ByteUtil.long2Bytes(offset));
+            writableFile.appendData(ByteUtil.int2Bytes(size));
             logicUnitCount.getAndIncrement();
         } catch (Exception e) {
             e.printStackTrace();
@@ -49,9 +51,8 @@ public class ConsumerQueue {
     }
 
     public byte[] get(int count) {
-        byte[] ret = new byte[12];
-        int logicCount = logicUnitCount.get();
-        MqStoreService.byteBuff2bytes(queues.get(count / logicCount).read(count % logicCount * queueUnitSize, 12), ret);
+        byte[] ret = new byte[queueUnitSize];
+        MqStoreService.byteBuff2bytes(queues.get(count / queueUnitCount).read(count % queueUnitCount * queueUnitSize, queueUnitSize), ret);
         return ret;
     }
 }

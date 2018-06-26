@@ -2,6 +2,7 @@ package com.stouduo.mq.service;
 
 import com.stouduo.mq.config.Config;
 import com.stouduo.mq.model.MappedFile;
+import com.stouduo.mq.util.ByteUtil;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
@@ -29,7 +30,7 @@ public class MqStoreService {
         MappedFile file = new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize);
         file.boundChannelToByteBuffer();
         try {
-            file.appendData(new byte[]{(byte) MAGIC_CODE});
+            file.appendData(ByteUtil.int2Bytes(MAGIC_CODE));
             this.logicOffset += 4;
         } catch (Exception e) {
             e.printStackTrace();

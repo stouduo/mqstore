@@ -89,9 +89,11 @@ public class MappedFile {
 
 
     public synchronized ByteBuffer read(int offset, int size) {
+        int position = mappedByteBuffer.position();
+        mappedByteBuffer.position(offset);
         ByteBuffer byteBuffer = mappedByteBuffer.slice();
-        byteBuffer.position(offset);
-        byteBuffer.limit(offset + size);
+        mappedByteBuffer.position(position);
+        byteBuffer.limit(size);
         return byteBuffer.slice();
     }
 
@@ -123,7 +125,6 @@ public class MappedFile {
                     + ", max file size=" + MAX_FILE_SIZE);
             return false;
         }
-
         this.mappedByteBuffer.put(data, offset, lentgh);
 
         // 检查是否需要把内存缓冲刷到磁盘
