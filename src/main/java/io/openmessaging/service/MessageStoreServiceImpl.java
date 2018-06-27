@@ -51,6 +51,8 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     public static void main(String[] args) {
         MessageStoreService messageStoreService = new MessageStoreServiceImpl();
         messageStoreService.store("1", "test".getBytes());
-        System.out.println(messageStoreService.get("1", 0, 1));
+        for (byte[] bytes : messageStoreService.get("1", 0, 1)) {
+            System.out.println(new String(bytes));
+        }
     }
 }

@@ -19,12 +19,12 @@ public class MqStoreService {
     private static final int MAGIC_CODE = 0x1dcfc;
 
     public MqStoreService() {
-        init();
+//        init();
     }
 
-    private void init() {
-        storeFiles.add(create());
-    }
+//    private void init() {
+//        storeFiles.add(create());
+//    }
 
     private MappedFile create() {
         MappedFile file = new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize);
@@ -39,13 +39,18 @@ public class MqStoreService {
     }
 
     public synchronized long put(byte[] message) {
-        MappedFile writableFile = storeFiles.get(storeFiles.size() - 1);
         long retOffset = logicOffset, fileOffset = logicOffset % storeFileSize;
         try {
-            if (offsetOutOfBound(fileOffset, message.length)) {
-                writableFile.appendData(message, 0, (int) (storeFileSize - fileOffset));
+            MappedFile writableFile;
+            if (fileOffset == 0) {
                 writableFile = create();
-                writableFile.appendData(message, (int) (storeFileSize - fileOffset + 1), (int) (fileOffset + message.length - storeFileSize));
+                storeFiles.add(writableFile);
+            }
+            writableFile = storeFiles.get(storeFiles.size() - 1);
+            if (offsetOutOfBound(fileOffset, message.length)) {
+                writableFile.appendData(message, 0, (int) (storeFileSize - fileOffset - 1));
+                writableFile = create();
+                writableFile.appendData(message, (int) (storeFileSize - fileOffset), (int) (fileOffset + message.length - storeFileSize));
                 storeFiles.add(writableFile);
             } else {
                 writableFile.appendData(message);

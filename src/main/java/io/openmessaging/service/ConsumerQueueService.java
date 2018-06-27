@@ -13,7 +13,7 @@ public class ConsumerQueueService {
 
     public long[] get(long queueId, int count) {
         byte[] ret = consumerQueues.get((int) queueId / countPerConsumerQueues).get(count);
-        long[] retL = {ByteUtil.bytes2Long(ret, 0), ByteUtil.bytes2Int(ret, 8)};
+        long[] retL = {ByteUtil.bytes2Long(ret, 0), ByteUtil.bytes2Long(ret, 8)};
         return retL;
     }
 

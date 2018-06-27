@@ -37,6 +37,13 @@ public class ByteUtil {
         return byteNum;
     }
 
+    public static void long2Bytes(byte[] ret, int offset, long num) {
+        for (int ix = 0 + offset; ix < 8 + offset; ++ix) {
+            int offs = 64 - (ix + 1) * 8;
+            ret[ix] = (byte) ((num >> offs) & 0xff);
+        }
+    }
+
     public static long bytes2Long(byte[] byteNum, int offset) {
         long num = 0;
         for (int ix = offset; ix < offset + 8; ++ix) {

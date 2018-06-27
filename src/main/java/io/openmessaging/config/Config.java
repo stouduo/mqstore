@@ -18,8 +18,8 @@ public class Config {
     public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
     public static final String COUNT_PER_CONSUMER_QUEUE = "count.per.consumer.queue";
-    public static final int CONSUMER_QUEUE_STORE_UNIT_SIZE = 12;
-    public static int defaultStoreSize = 1024 * 1024 * 50;
+    public static final int CONSUMER_QUEUE_STORE_UNIT_SIZE = 16;
+    public static int defaultStoreSize = 1024 * 1024 * 1024;
     public static int defaultFlushInterval = 1000;
     public static int defaultFlushSize = 1024 * 512;
     private static ConcurrentMap<String, String> configs = new ConcurrentHashMap<>();
@@ -59,7 +59,7 @@ public class Config {
     }
 
     public static String get(String propKey) {
-        return configs.get(propKey).toString();
+        return configs.get(propKey).toString().trim();
     }
 
     public static boolean getBoolean(String propKey) {

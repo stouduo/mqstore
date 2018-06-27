@@ -20,12 +20,12 @@ public class ConsumerQueue {
 
     public ConsumerQueue(int consumerQueueIndex) {
         this.consumerQueueIndex = consumerQueueIndex + "";
-        init();
+//        init();
     }
 
-    private void init() {
-        queues.add(create());
-    }
+//    private void init() {
+//        queues.add(create());
+//    }
 
     private MappedFile create() {
         MappedFile file = new MappedFile(MessageFormat.format("consumer_queue_{0}-{1}.data", consumerQueueIndex, queues.size() + ""), queueFileStorePath, queueFileSize);
@@ -34,15 +34,17 @@ public class ConsumerQueue {
     }
 
     public synchronized int put(long offset, int size) {
-        MappedFile writableFile = queues.get(queues.size() - 1);
+        MappedFile writableFile;
         int retCount = logicUnitCount.get();
         try {
-            if (retCount != 0 && retCount % queueUnitCount == 0) {
+            if (retCount % queueUnitCount == 0) {
                 writableFile = create();
                 queues.add(writableFile);
-            }
-            writableFile.appendData(ByteUtil.long2Bytes(offset));
-            writableFile.appendData(ByteUtil.int2Bytes(size));
+            } else writableFile = queues.get(queues.size() - 1);
+            byte[] bytes = new byte[16];
+            ByteUtil.long2Bytes(bytes, 0, offset);
+            ByteUtil.long2Bytes(bytes, 8, size);
+            writableFile.appendData(bytes);
             logicUnitCount.getAndIncrement();
         } catch (Exception e) {
             e.printStackTrace();

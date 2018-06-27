@@ -1,5 +1,7 @@
 package io.openmessaging.model;
 
+import io.openmessaging.config.Config;
+
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
@@ -27,13 +29,10 @@ public class MappedFile {
     private final static long MAX_FILE_SIZE = 1024 * 1024 * 50;
 
     // 最大的脏数据量512KB,系统必须触发一次强制刷
-    private long MAX_FLUSH_DATA_SIZE = 1024 * 512;
+    private long MAX_FLUSH_DATA_SIZE = Config.fileFlushSize;
 
     // 最大的刷间隔,系统必须触发一次强制刷
-    private long MAX_FLUSH_TIME_GAP = 1000;
-
-    // 文件写入位置
-    private long writePosition = 0;
+    private long MAX_FLUSH_TIME_GAP = Config.fileFlushInterval;
 
     // 最后一次刷数据的时候
     private long lastFlushTime;
@@ -112,17 +111,16 @@ public class MappedFile {
         if (!boundSuccess) {
             boundChannelToByteBuffer();
         }
-
-        writePosition = writePosition + data.length;
-        if (writePosition >= MAX_FILE_SIZE) {   // 如果写入data会超出文件大小限制，不写入
-            flush();
+        int writePosition = mappedByteBuffer.position() + data.length;
+        if (writePosition > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+            flush(writePosition);
             writePosition = writePosition - data.length;
             System.out.println("File="
                     + file.toURI().toString()
                     + " is written full.");
             System.out.println("already write data length:"
                     + writePosition
-                    + ", max file size=" + MAX_FILE_SIZE);
+                    + ", max file size=" + fileSize);
             return false;
         }
         this.mappedByteBuffer.put(data, offset, lentgh);
@@ -132,13 +130,13 @@ public class MappedFile {
                 ||
                 (System.currentTimeMillis() - lastFlushTime > this.MAX_FLUSH_TIME_GAP
                         && writePosition > lastFlushFilePosition)) {
-            flush();   // 刷到磁盘
+            flush(writePosition);   // 刷到磁盘
         }
 
         return true;
     }
 
-    public synchronized void flush() {
+    public synchronized void flush(int writePosition) {
         this.mappedByteBuffer.force();
         this.lastFlushTime = System.currentTimeMillis();
         this.lastFlushFilePosition = writePosition;
@@ -168,9 +166,6 @@ public class MappedFile {
         return MAX_FILE_SIZE;
     }
 
-    public long getWritePosition() {
-        return writePosition;
-    }
 
     public long getLastFlushFilePosition() {
         return lastFlushFilePosition;
