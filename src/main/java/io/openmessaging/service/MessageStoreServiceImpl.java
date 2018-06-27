@@ -1,6 +1,4 @@
-package com.stouduo.mq.service;
-
-import com.stouduo.mq.util.StringCompress;
+package io.openmessaging.service;
 
 import java.util.ArrayList;
 import java.util.Collection;

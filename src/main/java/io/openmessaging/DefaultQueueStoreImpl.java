@@ -1,14 +1,18 @@
-package com.stouduo.mq;
+package io.openmessaging;
 
-import com.stouduo.mq.service.MessageStoreService;
-import com.stouduo.mq.service.MessageStoreServiceImpl;
+import io.openmessaging.service.MessageStoreService;
+import io.openmessaging.service.MessageStoreServiceImpl;
 
 import java.util.Collection;
 
-public class CustomQueueStoreImpl extends QueueStore {
+/**
+ * 这是一个简单的基于文件的实现，以方便选手理解题意；
+ * 实际提交时，请维持包名和类名不变，把方法实现修改为自己的内容；
+ */
+public class DefaultQueueStoreImpl extends QueueStore {
     private MessageStoreService messageStoreService;
 
-    public CustomQueueStoreImpl() {
+    public DefaultQueueStoreImpl() {
         this.messageStoreService = new MessageStoreServiceImpl();
     }
 

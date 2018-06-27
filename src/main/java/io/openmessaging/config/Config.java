@@ -1,4 +1,4 @@
-package com.stouduo.mq.config;
+package io.openmessaging.config;
 
 import java.io.File;
 import java.io.IOException;

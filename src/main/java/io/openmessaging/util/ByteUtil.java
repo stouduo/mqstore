@@ -1,4 +1,4 @@
-package com.stouduo.mq.util;
+package io.openmessaging.util;
 
 public class ByteUtil {
     public static byte[] int2Bytes(int num) {

@@ -1,4 +1,4 @@
-package com.stouduo.mq.util;
+package io.openmessaging.util;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;

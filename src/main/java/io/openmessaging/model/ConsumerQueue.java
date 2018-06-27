@@ -1,8 +1,8 @@
-package com.stouduo.mq.model;
+package io.openmessaging.model;
 
-import com.stouduo.mq.config.Config;
-import com.stouduo.mq.service.MqStoreService;
-import com.stouduo.mq.util.ByteUtil;
+import io.openmessaging.config.Config;
+import io.openmessaging.service.MqStoreService;
+import io.openmessaging.util.ByteUtil;
 
 import java.text.MessageFormat;
 import java.util.ArrayList;

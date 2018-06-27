@@ -1,4 +1,6 @@
-package com.stouduo.mq;
+package com.stouduo;
+
+import io.openmessaging.QueueStore;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,6 +24,7 @@ public class DefaultQueueStoreImpl extends QueueStore {
         }
         queueMap.get(queueName).add(message);
     }
+
     public synchronized Collection<byte[]> get(String queueName, long offset, long num) {
         if (!queueMap.containsKey(queueName)) {
             return EMPTY;

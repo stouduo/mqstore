@@ -1,8 +1,8 @@
-package com.stouduo.mq.service;
+package io.openmessaging.service;
 
-import com.stouduo.mq.config.Config;
-import com.stouduo.mq.model.ConsumerQueue;
-import com.stouduo.mq.util.ByteUtil;
+import io.openmessaging.config.Config;
+import io.openmessaging.model.ConsumerQueue;
+import io.openmessaging.util.ByteUtil;
 
 import java.util.ArrayList;
 import java.util.List;

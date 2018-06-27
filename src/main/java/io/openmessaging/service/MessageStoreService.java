@@ -1,4 +1,4 @@
-package com.stouduo.mq.service;
+package io.openmessaging.service;
 
 import java.util.Collection;
 

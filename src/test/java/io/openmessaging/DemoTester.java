@@ -1,5 +1,5 @@
-package com.stouduo.mq;
-//com.stouduo.mq.CustomQueueStoreImpl
+package io.openmessaging;
+//CustomQueueStoreImpl
 
 import java.util.Collection;
 import java.util.Random;
@@ -22,11 +22,11 @@ public class DemoTester {
         //消费阶段的最大持续时间，也即在该时间内，如果消息依然没有消费完毕，则退出评测
         int checkTime = 10 * 60 * 1000;
         //队列的数量
-        int queueNum = 1000;
+        int queueNum = 10000;
         //正确性检测的次数
         int checkNum = 1000;
         //消费阶段的总队列数量
-        int checkQueueNum = 200;
+        int checkQueueNum = 2000;
         //发送的线程数量
         int sendTsNum = 10;
         //消费的线程数量
@@ -40,8 +40,8 @@ public class DemoTester {
         QueueStore queueStore = null;
 
         try {
-            Class queueStoreClass = Class.forName("com.stouduo.mq.CustomQueueStoreImpl");
-//            Class queueStoreClass = Class.forName("com.stouduo.mq.DefaultQueueStoreImpl");
+            Class queueStoreClass = Class.forName("io.openmessaging.DefaultQueueStoreImpl");
+//            Class queueStoreClass = Class.forName("com.stouduo.DefaultQueueStoreImpl");
             queueStore = (QueueStore) queueStoreClass.newInstance();
         } catch (Throwable t) {
             t.printStackTrace();

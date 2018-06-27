@@ -1,4 +1,4 @@
-package com.stouduo.mq.model;
+package io.openmessaging.model;
 
 import java.io.File;
 import java.io.IOException;

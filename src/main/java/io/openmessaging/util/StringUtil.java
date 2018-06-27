@@ -1,4 +1,4 @@
-package com.stouduo.mq.util;
+package io.openmessaging.util;
 
 public class StringUtil {
     public static boolean isEmpty(String str) {

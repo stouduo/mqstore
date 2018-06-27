@@ -1,8 +1,8 @@
-package com.stouduo.mq.service;
+package io.openmessaging.service;
 
-import com.stouduo.mq.config.Config;
-import com.stouduo.mq.model.MappedFile;
-import com.stouduo.mq.util.ByteUtil;
+import io.openmessaging.config.Config;
+import io.openmessaging.model.MappedFile;
+import io.openmessaging.util.ByteUtil;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
