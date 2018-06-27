@@ -22,37 +22,37 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     }
 
     @Override
-    public synchronized Collection<String> get(String queueName, long offset, long num) {
-        List<String> ret = new ArrayList<>();
+    public synchronized Collection<byte[]> get(String queueName, long offset, long num) {
+        List<byte[]> ret = new ArrayList<>();
+        List<Integer> indices = queueMap.get(queueName);
         for (int index = 0; index < num; index++) {
-           int o = (int) (offset + index);
-            System.out.println(o +"--"+queueMap.get(queueName).size());
-            long[] result = consumerQueueService.get(queueIds.get(queueName), queueMap.get(queueName).get(o));
-            ret.add(new String(mqStoreService.get(result[0], (int) result[1])));
+            int o = (int) (offset + index);
+            if (o >= indices.size()) break;
+            long[] result = consumerQueueService.get(queueIds.get(queueName), indices.get(o));
+            ret.add(mqStoreService.get(result[0], (int) result[1]));
         }
         return ret;
     }
 
     @Override
-    public synchronized void store(String queueName, String message) {
+    public synchronized void store(String queueName, byte[] message) {
         Long queueId = queueIds.get(queueName);
         if (queueId == null) {
             queueIds.put(queueName, queueIdGenerator.getAndIncrement());
         }
         final long id = queueIds.get(queueName);
-        byte[] body = message.getBytes();
-        long storeOffset = mqStoreService.put(body);
+        long storeOffset = mqStoreService.put(message);
         ArrayList<Integer> indices = queueMap.get(queueName);
         if (indices == null) {
             indices = new ArrayList<>();
             queueMap.put(queueName, indices);
         }
-        indices.add(consumerQueueService.put(id, storeOffset, body.length));
+        indices.add(consumerQueueService.put(id, storeOffset, message.length));
     }
 
     public static void main(String[] args) {
         MessageStoreService messageStoreService = new MessageStoreServiceImpl();
-        messageStoreService.store("1", "test");
+        messageStoreService.store("1", "test".getBytes());
         System.out.println(messageStoreService.get("1", 0, 1));
     }
 }

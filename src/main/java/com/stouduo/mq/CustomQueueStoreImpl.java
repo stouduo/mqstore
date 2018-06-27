@@ -13,12 +13,12 @@ public class CustomQueueStoreImpl extends QueueStore {
     }
 
     @Override
-    public void put(String queueName, String message) {
+    public void put(String queueName, byte[] message) {
         messageStoreService.store(queueName, message);
     }
 
     @Override
-    public Collection<String> get(String queueName, long offset, long num) {
+    public Collection<byte[]> get(String queueName, long offset, long num) {
         return messageStoreService.get(queueName, offset, num);
     }
 }
