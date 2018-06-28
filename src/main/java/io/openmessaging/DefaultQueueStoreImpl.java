@@ -2,6 +2,7 @@ package io.openmessaging;
 
 import io.openmessaging.service.MessageStoreService;
 import io.openmessaging.service.MessageStoreServiceImpl;
+import io.openmessaging.service.MessageStoreServiceImpl2;
 
 import java.util.Collection;
 
@@ -13,7 +14,7 @@ public class DefaultQueueStoreImpl extends QueueStore {
     private MessageStoreService messageStoreService;
 
     public DefaultQueueStoreImpl() {
-        this.messageStoreService = new MessageStoreServiceImpl();
+        this.messageStoreService = new MessageStoreServiceImpl2();
     }
 
     @Override

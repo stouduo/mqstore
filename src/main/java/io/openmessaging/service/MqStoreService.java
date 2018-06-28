@@ -45,8 +45,7 @@ public class MqStoreService {
         try {
             MappedFile writableFile;
             if (fileOffset == 0) {
-                writableFile = create();
-                storeFiles.add(writableFile);
+                storeFiles.add(create());
             }
             fileOffset = logicOffset % storeFileSize;
             retOffset = logicOffset;

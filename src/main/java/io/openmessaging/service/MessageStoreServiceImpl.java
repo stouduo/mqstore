@@ -15,7 +15,6 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     private static AtomicLong queueIdGenerator = new AtomicLong(0);
     private static ConcurrentHashMap<String, Long> queueIds = new ConcurrentHashMap<>();
-    private ReentrantLock lock = new ReentrantLock();
 
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
