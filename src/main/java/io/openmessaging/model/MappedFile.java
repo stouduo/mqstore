@@ -56,7 +56,7 @@ public class MappedFile {
             }
         }
         this.fileSize = fileSize;
-
+        boundChannelToByteBuffer();
     }
 
     /**

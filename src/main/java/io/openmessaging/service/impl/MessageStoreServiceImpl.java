@@ -1,22 +1,28 @@
-package io.openmessaging.service;
+package io.openmessaging.service.impl;
+
+import io.openmessaging.model.Index;
+import io.openmessaging.service.IndexService;
+import io.openmessaging.service.MessageStoreService;
+import io.openmessaging.service.MqStoreService;
 
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
-public class MessageStoreServiceImpl2 implements MessageStoreService {
+public class MessageStoreServiceImpl implements MessageStoreService {
     private MqStoreService mqStoreService;
-    private static ConcurrentHashMap<String, List<Index>> queueMap = new ConcurrentHashMap<>();
+    private IndexService indexService;
 
-    public MessageStoreServiceImpl2() {
+    public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
+        this.indexService = new RamIndexService();
     }
 
     @Override
     public Collection<byte[]> get(String queueName, long offset, long num) {
         List<byte[]> ret = new ArrayList<>();
-        List<Index> indices = queueMap.get(queueName);
+        List<Index> indices = indexService.get(queueName);
         for (int i = 0; i < num; i++) {
             int o = (int) (offset + i);
             if (o >= indices.size()) break;
@@ -28,8 +34,7 @@ public class MessageStoreServiceImpl2 implements MessageStoreService {
 
     @Override
     public void store(String queueName, byte[] message) {
-        queueMap.putIfAbsent(queueName, new ArrayList<>());
-        queueMap.get(queueName).add(new Index(message.length, mqStoreService.put(message)));
+        indexService.put(queueName, new Index(message.length, mqStoreService.put(message)));
     }
 
     public static void main(String[] args) {
@@ -40,21 +45,4 @@ public class MessageStoreServiceImpl2 implements MessageStoreService {
         }
     }
 
-    private static class Index {
-        private long offset;
-        private int size;
-
-        public Index(int size, long offset) {
-            this.offset = offset;
-            this.size = size;
-        }
-
-        public long getOffset() {
-            return offset;
-        }
-
-        public int getSize() {
-            return size;
-        }
-    }
 }

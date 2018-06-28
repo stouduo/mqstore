@@ -21,16 +21,10 @@ public class MqStoreService {
     private static final int MAGIC_CODE = 0x1dcfc;
 
     public MqStoreService() {
-//        init();
     }
-
-//    private void init() {
-//        storeFiles.add(create());
-//    }
 
     private MappedFile create() {
         MappedFile file = new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize);
-        file.boundChannelToByteBuffer();
         try {
             file.appendData(ByteUtil.int2Bytes(MAGIC_CODE));
             logicOffset += 4;
