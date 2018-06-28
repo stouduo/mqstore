@@ -108,6 +108,7 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
+
     public boolean appendData(byte[] data, int offset, int length) throws Exception {
         int writePosition = mappedByteBuffer.position() + length;
         if (writePosition > fileSize) {   // 如果写入data会超出文件大小限制，不写入
@@ -163,6 +164,9 @@ public class MappedFile {
         return MAX_FILE_SIZE;
     }
 
+    public MappedByteBuffer getMappedByteBuffer() {
+        return mappedByteBuffer;
+    }
 
     public long getLastFlushFilePosition() {
         return lastFlushFilePosition;

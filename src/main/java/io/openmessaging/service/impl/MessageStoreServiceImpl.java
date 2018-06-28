@@ -16,7 +16,8 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
-        this.indexService = new RamIndexService();
+//        this.indexService = new RamIndexService();
+        this.indexService = new DiskIndexService();
     }
 
     @Override

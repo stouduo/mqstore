@@ -28,4 +28,9 @@ public class RamIndexService implements IndexService {
     public List<Index> get(String key) {
         return indices.get(key);
     }
+
+    @Override
+    public Index get(String key, int index) {
+        return indices.get(key).get(index);
+    }
 }

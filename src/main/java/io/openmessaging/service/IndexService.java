@@ -23,5 +23,7 @@ public interface IndexService {
 
     void put(String key, Index index);
 
-    public List<Index> get(String key);
+    List<Index> get(String key);
+
+    Index get(String key, int index);
 }
