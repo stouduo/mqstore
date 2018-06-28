@@ -33,7 +33,7 @@ public class ConsumerQueue {
         return file;
     }
 
-    public synchronized int put(long offset, int size) {
+    public int put(long offset, int size) {
         MappedFile writableFile;
         int retCount = logicUnitCount.get();
         try {
@@ -54,7 +54,7 @@ public class ConsumerQueue {
 
     public byte[] get(int count) {
         byte[] ret = new byte[queueUnitSize];
-        MqStoreService.byteBuff2bytes(queues.get(count / queueUnitCount).read(count % queueUnitCount * queueUnitSize, queueUnitSize), ret);
+        MqStoreService.byteBuff2bytes(queues.get(count / queueUnitCount).read(count % queueUnitCount * queueUnitSize, queueUnitSize), -1, ret);
         return ret;
     }
 }

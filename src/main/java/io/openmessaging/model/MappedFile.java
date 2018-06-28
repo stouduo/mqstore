@@ -93,7 +93,7 @@ public class MappedFile {
         ByteBuffer byteBuffer = mappedByteBuffer.slice();
         mappedByteBuffer.position(position);
         byteBuffer.limit(size);
-        return byteBuffer.slice();
+        return byteBuffer;
     }
 
     /**
@@ -107,14 +107,14 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
-    public synchronized boolean appendData(byte[] data, int offset, int lentgh) throws Exception {
+    public synchronized boolean appendData(byte[] data, int offset, int length) throws Exception {
         if (!boundSuccess) {
             boundChannelToByteBuffer();
         }
-        int writePosition = mappedByteBuffer.position() + data.length;
+        int writePosition = mappedByteBuffer.position() + length;
         if (writePosition > fileSize) {   // 如果写入data会超出文件大小限制，不写入
             flush(writePosition);
-            writePosition = writePosition - data.length;
+            writePosition = writePosition - length;
             System.out.println("File="
                     + file.toURI().toString()
                     + " is written full.");
@@ -123,7 +123,7 @@ public class MappedFile {
                     + ", max file size=" + fileSize);
             return false;
         }
-        this.mappedByteBuffer.put(data, offset, lentgh);
+        this.mappedByteBuffer.put(data, offset, length);
 
         // 检查是否需要把内存缓冲刷到磁盘
         if ((writePosition - lastFlushFilePosition > this.MAX_FLUSH_DATA_SIZE)

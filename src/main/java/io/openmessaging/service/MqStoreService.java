@@ -38,8 +38,8 @@ public class MqStoreService {
         return file;
     }
 
-    public synchronized long put(byte[] message) {
-        long retOffset = logicOffset, fileOffset = logicOffset % storeFileSize;
+    public long put(byte[] message) {
+        long retOffset = 0, fileOffset = logicOffset % storeFileSize;
         try {
             MappedFile writableFile;
             if (fileOffset == 0) {
@@ -47,10 +47,13 @@ public class MqStoreService {
                 storeFiles.add(writableFile);
             }
             writableFile = storeFiles.get(storeFiles.size() - 1);
+            fileOffset = logicOffset % storeFileSize;
+            retOffset = logicOffset;
             if (offsetOutOfBound(fileOffset, message.length)) {
-                writableFile.appendData(message, 0, (int) (storeFileSize - fileOffset - 1));
+                int offset = (int) (storeFileSize - fileOffset);
+                writableFile.appendData(message, 0, offset);
                 writableFile = create();
-                writableFile.appendData(message, (int) (storeFileSize - fileOffset), (int) (fileOffset + message.length - storeFileSize));
+                writableFile.appendData(message, offset, (int) (fileOffset + message.length - storeFileSize));
                 storeFiles.add(writableFile);
             } else {
                 writableFile.appendData(message);
@@ -67,14 +70,15 @@ public class MqStoreService {
         int fileIndex = (int) offset / storeFileSize;
         int fileOffset = (int) offset % storeFileSize;
         if (offsetOutOfBound(fileOffset, size)) {
-            byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, storeFileSize - fileOffset), ret);
-            byteBuff2bytes(storeFiles.get(fileIndex + 1).read(4, fileOffset + size - storeFileSize), ret);
-        } else byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, size), ret);
+            byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, storeFileSize - fileOffset), 0, ret);
+            byteBuff2bytes(storeFiles.get(fileIndex + 1).read(4, fileOffset + size - storeFileSize), 3, ret);
+        } else byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, size), -1, ret);
         return ret;
     }
 
-    public static void byteBuff2bytes(ByteBuffer byteBuffer, byte[] ret) {
-        byteBuffer.get(ret, byteBuffer.position(), byteBuffer.limit() - byteBuffer.position());
+    public static void byteBuff2bytes(ByteBuffer byteBuffer, int offset, byte[] ret) {
+        if (offset == -1) offset = byteBuffer.position();
+        byteBuffer.get(ret, offset, byteBuffer.limit() - byteBuffer.position());
     }
 
     private boolean offsetOutOfBound(long offset, int size) {

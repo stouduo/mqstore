@@ -17,7 +17,7 @@ public class ConsumerQueueService {
         return retL;
     }
 
-    public synchronized int put(long queueId, long offset, int size) {
+    public int put(long queueId, long offset, int size) {
         int index = (int) queueId / countPerConsumerQueues;
         int createCount = index - consumerQueues.size();
         while (createCount-- >= 0) consumerQueues.add(new ConsumerQueue(consumerQueues.size()));
