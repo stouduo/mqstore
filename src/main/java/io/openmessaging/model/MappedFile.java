@@ -8,6 +8,7 @@ import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
+import java.nio.channels.FileLock;
 
 public class MappedFile {
 
@@ -107,10 +108,7 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
-    public synchronized boolean appendData(byte[] data, int offset, int length) throws Exception {
-        if (!boundSuccess) {
-            boundChannelToByteBuffer();
-        }
+    public boolean appendData(byte[] data, int offset, int length) throws Exception {
         int writePosition = mappedByteBuffer.position() + length;
         if (writePosition > fileSize) {   // 如果写入data会超出文件大小限制，不写入
             flush(writePosition);
@@ -124,7 +122,6 @@ public class MappedFile {
             return false;
         }
         this.mappedByteBuffer.put(data, offset, length);
-
         // 检查是否需要把内存缓冲刷到磁盘
         if ((writePosition - lastFlushFilePosition > this.MAX_FLUSH_DATA_SIZE)
                 ||
@@ -136,7 +133,7 @@ public class MappedFile {
         return true;
     }
 
-    public synchronized void flush(int writePosition) {
+    public void flush(int writePosition) {
         this.mappedByteBuffer.force();
         this.lastFlushTime = System.currentTimeMillis();
         this.lastFlushFilePosition = writePosition;

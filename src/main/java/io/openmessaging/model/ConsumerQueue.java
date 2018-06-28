@@ -15,7 +15,7 @@ public class ConsumerQueue {
     private static int queueFileSize = queueUnitSize * queueUnitCount;
     private static String queueFileStorePath = Config.rootPath + Config.consumerStorePath;
     private List<MappedFile> queues = new ArrayList<>(10);
-    private AtomicInteger logicUnitCount = new AtomicInteger(0);
+    private int logicUnitCount = 0;
     private String consumerQueueIndex;
 
     public ConsumerQueue(int consumerQueueIndex) {
@@ -33,9 +33,9 @@ public class ConsumerQueue {
         return file;
     }
 
-    public int put(long offset, int size) {
+    public synchronized int put(long offset, int size) {
         MappedFile writableFile;
-        int retCount = logicUnitCount.get();
+        int retCount = logicUnitCount;
         try {
             if (retCount % queueUnitCount == 0) {
                 writableFile = create();
@@ -45,7 +45,7 @@ public class ConsumerQueue {
             ByteUtil.long2Bytes(bytes, 0, offset);
             ByteUtil.long2Bytes(bytes, 8, size);
             writableFile.appendData(bytes);
-            logicUnitCount.getAndIncrement();
+            logicUnitCount++;
         } catch (Exception e) {
             e.printStackTrace();
         }

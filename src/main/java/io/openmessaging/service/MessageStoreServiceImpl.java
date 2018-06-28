@@ -2,17 +2,20 @@ package io.openmessaging.service;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import java.util.concurrent.locks.ReentrantLock;
 
 public class MessageStoreServiceImpl implements MessageStoreService {
     private MqStoreService mqStoreService;
     private ConsumerQueueService consumerQueueService;
-    private static ConcurrentHashMap<String, ArrayList<Integer>> queueMap = new ConcurrentHashMap<>();
+    private static ConcurrentHashMap<String, List<Integer>> queueMap = new ConcurrentHashMap<>();
 
     private static AtomicLong queueIdGenerator = new AtomicLong(0);
     private static ConcurrentHashMap<String, Long> queueIds = new ConcurrentHashMap<>();
+    private ReentrantLock lock = new ReentrantLock();
 
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
@@ -20,7 +23,7 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     }
 
     @Override
-    public synchronized Collection<byte[]> get(String queueName, long offset, long num) {
+    public Collection<byte[]> get(String queueName, long offset, long num) {
         List<byte[]> ret = new ArrayList<>();
         List<Integer> indices = queueMap.get(queueName);
         for (int index = 0; index < num; index++) {
@@ -33,19 +36,12 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     }
 
     @Override
-    public synchronized void store(String queueName, byte[] message) {
-        Long queueId = queueIds.get(queueName);
-        if (queueId == null) {
-            queueIds.put(queueName, queueIdGenerator.getAndIncrement());
-        }
-        final long id = queueIds.get(queueName);
+    public void store(String queueName, byte[] message) {
+        queueIds.putIfAbsent(queueName, queueIdGenerator.getAndIncrement());
+        queueMap.putIfAbsent(queueName, new ArrayList<>());
+        long id = queueIds.get(queueName);
         long storeOffset = mqStoreService.put(message);
-        ArrayList<Integer> indices = queueMap.get(queueName);
-        if (indices == null) {
-            indices = new ArrayList<>();
-            queueMap.put(queueName, indices);
-        }
-        indices.add(consumerQueueService.put(id, storeOffset, message.length));
+        queueMap.get(queueName).add(consumerQueueService.put(id, storeOffset, message.length));
     }
 
     public static void main(String[] args) {

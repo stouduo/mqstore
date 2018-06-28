@@ -7,8 +7,10 @@ import io.openmessaging.util.ByteUtil;
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MqStoreService {
     private static int storeFileSize = Config.mqStoreFileSize;
@@ -31,14 +33,14 @@ public class MqStoreService {
         file.boundChannelToByteBuffer();
         try {
             file.appendData(ByteUtil.int2Bytes(MAGIC_CODE));
-            this.logicOffset += 4;
+            logicOffset += 4;
         } catch (Exception e) {
             e.printStackTrace();
         }
         return file;
     }
 
-    public long put(byte[] message) {
+    public synchronized long put(byte[] message) {
         long retOffset = 0, fileOffset = logicOffset % storeFileSize;
         try {
             MappedFile writableFile;
@@ -46,9 +48,9 @@ public class MqStoreService {
                 writableFile = create();
                 storeFiles.add(writableFile);
             }
-            writableFile = storeFiles.get(storeFiles.size() - 1);
             fileOffset = logicOffset % storeFileSize;
             retOffset = logicOffset;
+            writableFile = storeFiles.get(storeFiles.size() - 1);
             if (offsetOutOfBound(fileOffset, message.length)) {
                 int offset = (int) (storeFileSize - fileOffset);
                 writableFile.appendData(message, 0, offset);
