@@ -42,18 +42,16 @@ public class MappedFile {
     private long lastFlushFilePosition = 0;
 
     public MappedFile(String fileName, String fileDirPath, int fileSize) {
-        super();
         this.fileName = fileName;
         this.fileDirPath = fileDirPath;
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
-        if (!file.exists()) {
-            try {
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            file.delete();
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
