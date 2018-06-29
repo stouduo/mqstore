@@ -32,7 +32,7 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     }
 
     @Override
-    public synchronized void store(String queueName, byte[] message) {
+    public void store(String queueName, byte[] message) {
         indexService.put(queueName, new Index(message.length, mqStoreService.put(message)));
     }
 
