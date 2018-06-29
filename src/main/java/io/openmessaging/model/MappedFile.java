@@ -47,11 +47,13 @@ public class MappedFile {
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
-        try {
-            file.delete();
-            file.createNewFile();
-        } catch (IOException e) {
-            e.printStackTrace();
+        if (!file.exists()) {
+            try {
+                file.delete();
+                file.createNewFile();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
@@ -105,7 +107,6 @@ public class MappedFile {
     public boolean appendData(byte[] data) throws Exception {
         return appendData(data, 0, data.length);
     }
-
 
     public boolean appendData(byte[] data, int offset, int length) throws Exception {
         int writePosition = mappedByteBuffer.position() + length;
@@ -162,9 +163,6 @@ public class MappedFile {
         return MAX_FILE_SIZE;
     }
 
-    public MappedByteBuffer getMappedByteBuffer() {
-        return mappedByteBuffer;
-    }
 
     public long getLastFlushFilePosition() {
         return lastFlushFilePosition;
@@ -178,4 +176,7 @@ public class MappedFile {
         return MAX_FLUSH_TIME_GAP;
     }
 
+    public MappedByteBuffer getMappedByteBuffer() {
+        return mappedByteBuffer;
+    }
 }
