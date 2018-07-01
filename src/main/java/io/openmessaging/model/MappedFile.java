@@ -47,14 +47,12 @@ public class MappedFile {
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
-        if (!file.exists()) {
             try {
                 file.delete();
                 file.createNewFile();
             } catch (IOException e) {
                 e.printStackTrace();
             }
-        }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
     }
