@@ -9,6 +9,7 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.util.concurrent.*;
 
 public class MappedFile {
 
@@ -26,20 +27,22 @@ public class MappedFile {
     private boolean boundSuccess = false;
     private int fileSize;
 
-    // 文件最大只能为50MB
-    private final static long MAX_FILE_SIZE = 1024 * 1024 * 50;
-
-    // 最大的脏数据量512KB,系统必须触发一次强制刷
-    private long MAX_FLUSH_DATA_SIZE = Config.fileFlushSize;
+    // 最大的脏数据量,系统必须触发一次强制刷
+    private long fileFlushSize = Config.fileFlushSize;
 
     // 最大的刷间隔,系统必须触发一次强制刷
-    private long MAX_FLUSH_TIME_GAP = Config.fileFlushInterval;
+//    private long MAX_FLUSH_TIME_GAP = Config.fileFlushInterval;
 
-    // 最后一次刷数据的时候
-    private long lastFlushTime;
+    // 上一次刷数据
+    private long lastFlushFileSize = 0;
 
-    // 上一次刷的文件位置
-    private long lastFlushFilePosition = 0;
+    private long writeSize = 0;
+    private ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(5, r -> {
+        Thread thread = new Thread(r);
+        thread.setName("flush-ioWorker");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public MappedFile(String fileName, String fileDirPath, int fileSize) {
         this.fileName = fileName;
@@ -55,6 +58,14 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
+        ioWorker.scheduleAtFixedRate(this::flush, 0, 5, TimeUnit.SECONDS);
+    }
+
+    private void flush() {
+        if (writeSize - lastFlushFileSize >= fileFlushSize) {
+            mappedByteBuffer.force();
+            lastFlushFileSize = writeSize;
+        }
     }
 
     /**
@@ -107,40 +118,52 @@ public class MappedFile {
     }
 
     public boolean appendData(byte[] data, int offset, int length) throws Exception {
-        int writePosition = mappedByteBuffer.position() + length;
-        if (writePosition > fileSize) {   // 如果写入data会超出文件大小限制，不写入
-            flush(writePosition);
-            writePosition = writePosition - length;
+        writeSize = mappedByteBuffer.position() + length;
+        if (writeSize > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+//            flush();
+            writeSize = writeSize - length;
             System.out.println("File="
                     + file.toURI().toString()
                     + " is written full.");
             System.out.println("already write data length:"
-                    + writePosition
+                    + writeSize
                     + ", max file size=" + fileSize);
             return false;
         }
         this.mappedByteBuffer.put(data, offset, length);
-        // 检查是否需要把内存缓冲刷到磁盘
-        if ((writePosition - lastFlushFilePosition > this.MAX_FLUSH_DATA_SIZE)
-                ||
-                (System.currentTimeMillis() - lastFlushTime > this.MAX_FLUSH_TIME_GAP
-                        && writePosition > lastFlushFilePosition)) {
-            flush(writePosition);   // 刷到磁盘
-        }
-
+//        flush();
         return true;
     }
 
-    public void flush(int writePosition) {
-//        System.out.println("flush mqstore to disk:" + writePosition);
-        this.mappedByteBuffer.force();
-        this.lastFlushTime = System.currentTimeMillis();
-        this.lastFlushFilePosition = writePosition;
+    public MappedFile writeInt(int offset, int value) {
+        writeSize += 4;
+        mappedByteBuffer.putInt(offset, value);
+//        flush();
+        return this;
     }
 
-    public long getLastFlushTime() {
-        return lastFlushTime;
+    public MappedFile writeLong(int offset, long value) {
+        writeSize += 8;
+        mappedByteBuffer.putLong(offset, value);
+//        flush();
+        return this;
     }
+
+    public int getInt(int offset) {
+        return mappedByteBuffer.getInt(offset);
+    }
+
+    public long getLong(int offset) {
+        return mappedByteBuffer.getLong(offset);
+    }
+
+//    public void flush(int writePosition) {
+////        System.out.println("flush mqstore to disk:" + writePosition);
+//        this.mappedByteBuffer.force();
+//        this.lastFlushTime = System.currentTimeMillis();
+//        this.lastFlushFilePosition = writePosition;
+//    }
+
 
     public String getFileName() {
         return fileName;
@@ -156,23 +179,6 @@ public class MappedFile {
 
     public File getFile() {
         return file;
-    }
-
-    public static long getMaxFileSize() {
-        return MAX_FILE_SIZE;
-    }
-
-
-    public long getLastFlushFilePosition() {
-        return lastFlushFilePosition;
-    }
-
-    public long getMAX_FLUSH_DATA_SIZE() {
-        return MAX_FLUSH_DATA_SIZE;
-    }
-
-    public long getMAX_FLUSH_TIME_GAP() {
-        return MAX_FLUSH_TIME_GAP;
     }
 
     public MappedByteBuffer getMappedByteBuffer() {

@@ -14,7 +14,7 @@ public class Config {
     public static final String MQ_STORE_PATH = "mq.store.path";
     public static final String INDEX_STORE_PATH = "index.store.path";
     public static final String MQ_STORE_MAPPED_FILE_SIZE = "mq.store.mapped.file.size";
-    public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
+//    public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
     private static final String INDEX_UNIT_COUNT_PER_QUEUE = "index.unit.count.per.queue";
     private static final String SLOT_COUNT = "slot.count";
@@ -34,7 +34,7 @@ public class Config {
     public static String indexStorePath = getOrDefaultValue(INDEX_STORE_PATH, File.separator + "index");
     public static String mqStorePath = getOrDefaultValue(MQ_STORE_PATH, File.separator + "mqstore");
     public static int mqStoreFileSize = Integer.parseInt(getOrDefaultValue(MQ_STORE_MAPPED_FILE_SIZE, defaultStoreSize + ""));
-    public static int fileFlushInterval = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_INTERVAL, defaultFlushInterval + ""));
+//    public static int fileFlushInterval = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_INTERVAL, defaultFlushInterval + ""));
     public static int fileFlushSize = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_SIZE, defaultFlushSize + ""));
     public static int slotCount = Integer.parseInt(getOrDefaultValue(SLOT_COUNT, 1200 + ""));
     public static int indexUnitCountPerQueue = Integer.parseInt(getOrDefaultValue(INDEX_UNIT_COUNT_PER_QUEUE, 20000 + ""));

@@ -10,18 +10,6 @@ public interface IndexService {
     int indexUnitCountPerQueue = Config.indexUnitCountPerQueue;
     int slotCount = Config.slotCount;
 
-    default boolean isAsync() {
-        return true;
-    }
-
-    default int hashKey(String key) {
-        int keyHash = key.hashCode();
-        int keyHashPositive = Math.abs(keyHash);
-        if (keyHashPositive < 0)
-            keyHashPositive = 0;
-        return keyHashPositive;
-    }
-
     void put(String key, long offset, int size);
 
     List<long[]> get(String key, long offset, long num);

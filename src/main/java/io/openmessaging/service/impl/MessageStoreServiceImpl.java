@@ -16,8 +16,8 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
-        this.indexService = new RamIndexService();
-//        this.indexService = new DiskIndexService();
+//        this.indexService = new RamIndexService();
+        this.indexService = new DiskIndexService();
     }
 
     @Override
@@ -38,8 +38,8 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     public static void main(String[] args) {
         MessageStoreService messageStoreService = new MessageStoreServiceImpl();
-        messageStoreService.store("1", "test".getBytes());
-        for (byte[] bytes : messageStoreService.get("1", 0, 1)) {
+        messageStoreService.store("13421", "test234".getBytes());
+        for (byte[] bytes : messageStoreService.get("13421", 0, 1)) {
             System.out.println(new String(bytes));
         }
     }
