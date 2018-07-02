@@ -1,15 +1,13 @@
 package io.openmessaging.service.impl;
 
-import io.openmessaging.model.Index;
 import io.openmessaging.service.IndexService;
 
 import java.util.ArrayList;
-import java.util.Collection;
 import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 
 public class RamIndexService implements IndexService {
-    private ConcurrentHashMap<String, List<Index>> indices;
+    private ConcurrentHashMap<String, List<long[]>> indices;
 
     public RamIndexService() {
         this(slotCount);
@@ -20,20 +18,20 @@ public class RamIndexService implements IndexService {
     }
 
     @Override
-    public void put(String key, Index index) {
-        indices.putIfAbsent(key, new ArrayList<>(indexUnitCountPerQueue));
-        indices.get(key).add(index);
+    public void put(String key, long offset, int size) {
+        indices.putIfAbsent(key, new ArrayList<>());
+        indices.get(key).add(new long[]{offset, size});
     }
 
 
     @Override
-    public List<Index> get(String key, long offset, long num) {
-        List<Index> indexList = indices.get(key);
+    public List<long[]> get(String key, long offset, long num) {
+        List<long[]> indexList = indices.get(key);
         return indexList.subList((int) offset, Math.min((int) (offset + num), indexList.size()));
     }
 
     @Override
-    public Index get(String key, int index) {
+    public long[] get(String key, int index) {
         return indices.get(key).get(index);
     }
 }

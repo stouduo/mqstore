@@ -22,9 +22,9 @@ public interface IndexService {
         return keyHashPositive;
     }
 
-    void put(String key, Index index);
+    void put(String key, long offset, int size);
 
-    List<Index> get(String key, long offset, long num);
+    List<long[]> get(String key, long offset, long num);
 
-    Index get(String key, int index);
+    long[] get(String key, int index);
 }

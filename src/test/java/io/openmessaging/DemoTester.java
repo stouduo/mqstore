@@ -41,7 +41,7 @@ public class DemoTester {
 
         try {
             Class queueStoreClass = Class.forName(args.length != 0 && "ram".equalsIgnoreCase(args[0]) ? "com.stouduo.DefaultQueueStoreImpl" : "io.openmessaging.DefaultQueueStoreImpl");
-//            Class queueStoreClass = Class.forName("io.openmessaging.DefaultQueueStoreImpl");
+//            Class queueStoreClass = Class.forName("com.stouduo.DefaultQueueStoreImpl");
             queueStore = (QueueStore) queueStoreClass.newInstance();
         } catch (Throwable t) {
             t.printStackTrace();

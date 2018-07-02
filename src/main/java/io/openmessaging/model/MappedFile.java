@@ -47,12 +47,12 @@ public class MappedFile {
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
-            try {
-                file.delete();
-                file.createNewFile();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+        try {
+            file.delete();
+            file.createNewFile();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
     }
@@ -132,6 +132,7 @@ public class MappedFile {
     }
 
     public void flush(int writePosition) {
+//        System.out.println("flush mqstore to disk:" + writePosition);
         this.mappedByteBuffer.force();
         this.lastFlushTime = System.currentTimeMillis();
         this.lastFlushFilePosition = writePosition;
