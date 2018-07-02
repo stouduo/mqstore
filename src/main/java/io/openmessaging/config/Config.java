@@ -17,7 +17,8 @@ public class Config {
     public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
     private static final String INDEX_UNIT_COUNT_PER_QUEUE = "index.unit.count.per.queue";
-    private static final String SLOT_COUNT = "slot.count";
+    private static final String INDEX_FILE_COUNT = "index.file.count";
+    private static final String SLOT_COUNT = "index.slot.count";
     public static final int INDEX_UNIT_SIZE = 12;
     public static int defaultStoreSize = 1024 * 1024 * 1024;
     public static int defaultFlushInterval = 1000;
@@ -38,6 +39,7 @@ public class Config {
     public static int fileFlushSize = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_SIZE, defaultFlushSize + ""));
     public static int slotCount = Integer.parseInt(getOrDefaultValue(SLOT_COUNT, 1200 + ""));
     public static int indexUnitCountPerQueue = Integer.parseInt(getOrDefaultValue(INDEX_UNIT_COUNT_PER_QUEUE, 20000 + ""));
+    public static int indexFileCount = Integer.parseInt(getOrDefaultValue(INDEX_FILE_COUNT, 4 + ""));
 
     public static void main(String[] args) {
         System.out.println(configs.toString());
