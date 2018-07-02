@@ -1,12 +1,15 @@
 package io.openmessaging.service.impl;
 
 import io.openmessaging.config.Config;
+import io.openmessaging.model.Index;
 import io.openmessaging.model.MappedFile;
 import io.openmessaging.service.IndexService;
 
 import java.nio.MappedByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class DiskIndexService implements IndexService {
@@ -17,6 +20,8 @@ public class DiskIndexService implements IndexService {
     private static AtomicInteger totalWriteCount = new AtomicInteger(0);
     private static int lastFlushCount = 0;
     private static MappedByteBuffer mappedByteBuffer;
+    private static Map<String, Integer> queueIds = new ConcurrentHashMap<>();
+    private static AtomicInteger idGene = new AtomicInteger(0);
 
     public DiskIndexService() {
         this.indexFile = new MappedFile("index.idx", filePath, indexFileSize);
@@ -31,14 +36,17 @@ public class DiskIndexService implements IndexService {
     }
 
     @Override
-    public synchronized void put(String key, long offset, int size) {
+    public void put(String key, long offset, int size) {
         try {
+            queueIds.putIfAbsent(key, idGene.getAndIncrement());
             int pyOffset = pyOffset(key);
-            int endOffset = mappedByteBuffer.getInt(pyOffset);
-            if (endOffset == 0) endOffset += pyOffset + 4;
-            mappedByteBuffer.putLong(endOffset, offset);
-            mappedByteBuffer.putInt(endOffset + 8, size);
-            mappedByteBuffer.putInt(pyOffset, endOffset + indexUnitSize);
+            synchronized (this) {
+                int endOffset = mappedByteBuffer.getInt(pyOffset);
+                if (endOffset == 0) endOffset += pyOffset + 4;
+                mappedByteBuffer.putLong(endOffset, offset);
+                mappedByteBuffer.putInt(endOffset + 8, size);
+                mappedByteBuffer.putInt(pyOffset, endOffset + indexUnitSize);
+            }
             totalWriteCount.getAndIncrement();
             if (totalWriteCount.get() % 10000000 == 0) {
 //                System.out.println("flush index to disk:" + totalWriteCount);
@@ -55,13 +63,13 @@ public class DiskIndexService implements IndexService {
         int pyOffset = pyOffset(key);
         int startOffset = pyOffset + 4 + (int) offset * indexUnitSize;
         int endOffset = Math.min(mappedByteBuffer.getInt(pyOffset), pyOffset + 4 + (int) (offset + num) * indexUnitSize);
-        for (int o = startOffset; o < endOffset; o += indexFileSize) {
+        for (int o = startOffset; o < endOffset; o += indexUnitSize) {
             indices.add(new long[]{mappedByteBuffer.getLong(o), mappedByteBuffer.getInt(o + 8)});
         }
         return indices;
     }
 
     private int pyOffset(String key) {
-        return hashKey(key) % slotCount * (4 + indexUnitSize * indexUnitCountPerQueue);
+        return queueIds.get(key) % slotCount * (4 + indexUnitSize * indexUnitCountPerQueue);
     }
 }
