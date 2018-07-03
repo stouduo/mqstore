@@ -9,6 +9,8 @@ import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.text.SimpleDateFormat;
+import java.util.Date;
 import java.util.concurrent.*;
 
 public class MappedFile {
@@ -31,13 +33,13 @@ public class MappedFile {
     private long fileFlushSize = Config.fileFlushSize;
 
     // 最大的刷间隔,系统必须触发一次强制刷
-//    private long MAX_FLUSH_TIME_GAP = Config.fileFlushInterval;
+    private long fileFlushInterval = Config.fileFlushInterval;
 
     // 上一次刷数据
     private long lastFlushFileSize = 0;
 
     private long writeSize = 0;
-    private ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(5, r -> {
+    private ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
         thread.setName("flush-ioWorker");
         thread.setDaemon(true);
@@ -58,13 +60,14 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, 5, TimeUnit.SECONDS);
+        ioWorker.scheduleAtFixedRate(this::flush, 0, fileFlushInterval, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
         if (writeSize - lastFlushFileSize >= fileFlushSize) {
             mappedByteBuffer.force();
             lastFlushFileSize = writeSize;
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:mmm").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize);
         }
     }
 
