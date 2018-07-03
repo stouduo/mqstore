@@ -14,9 +14,10 @@ public class DiskIndexService implements IndexService {
     private MappedFile indexFile;
     private static String filePath = Config.rootPath + Config.indexStorePath;
     private static int indexUnitSize = Config.INDEX_UNIT_SIZE;
-    private static int indexFileSize = slotCount * (4 + indexUnitSize * indexUnitCountPerQueue);
+    private static int indexFileSize = slotCount * (indexUnitSize * indexUnitCountPerQueue);
     private static Map<String, Integer> queueIds = new ConcurrentHashMap<>();
     private static AtomicInteger idGenerator = new AtomicInteger();
+    private static Map<String, Integer> lastIndexOffsets = new ConcurrentHashMap<>();
 
     public DiskIndexService() {
         this.indexFile = new MappedFile("index.idx", filePath, indexFileSize);
@@ -25,7 +26,7 @@ public class DiskIndexService implements IndexService {
     @Override
     public long[] get(String key, int index) {
         int pyOffset = pyOffset(key);
-        pyOffset += 4 + index * indexUnitSize;
+        pyOffset += index * indexUnitSize;
         return new long[]{indexFile.getLong(pyOffset), indexFile.getInt(pyOffset + 8)};
     }
 
@@ -34,13 +35,13 @@ public class DiskIndexService implements IndexService {
         try {
             queueIds.putIfAbsent(key, idGenerator.getAndIncrement());
             int pyOffset = pyOffset(key);
+            int endOffset = lastIndexOffsets.getOrDefault(key, pyOffset);
             synchronized (this) {
-                int endOffset = indexFile.getInt(pyOffset);
-                if (endOffset == 0) endOffset += pyOffset + 4;
                 indexFile.writeLong(endOffset, offset)
-                        .writeInt(endOffset + 8, size)
-                        .writeInt(pyOffset, endOffset + indexUnitSize);
+                        .writeInt(endOffset + 8, size);
+//                        .writeInt(pyOffset, endOffset + indexUnitSize);
             }
+            lastIndexOffsets.put(key, endOffset + indexUnitSize);
         } catch (Exception e) {
             e.printStackTrace();
         }
@@ -50,8 +51,8 @@ public class DiskIndexService implements IndexService {
     public List<long[]> get(String key, long offset, long num) {
         List<long[]> indices = new ArrayList<>();
         int pyOffset = pyOffset(key);
-        int startOffset = pyOffset + 4 + (int) offset * indexUnitSize;
-        int endOffset = Math.min(indexFile.getInt(pyOffset), pyOffset + 4 + (int) (offset + num) * indexUnitSize);
+        int startOffset = pyOffset + (int) offset * indexUnitSize;
+        int endOffset = Math.min(lastIndexOffsets.get(key), pyOffset + (int) (offset + num) * indexUnitSize);
         for (int o = startOffset; o < endOffset; o += indexUnitSize) {
             indices.add(new long[]{indexFile.getLong(o), indexFile.getInt(o + 8)});
         }
@@ -59,6 +60,6 @@ public class DiskIndexService implements IndexService {
     }
 
     private int pyOffset(String key) {
-        return queueIds.get(key) % slotCount * (4 + indexUnitSize * indexUnitCountPerQueue);
+        return queueIds.get(key) % slotCount * (indexUnitSize * indexUnitCountPerQueue);
     }
 }
