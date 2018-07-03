@@ -47,6 +47,11 @@ public class MappedFile {
         return thread;
     });
 
+    public MappedFile setFileFlushSize(int size) {
+        this.fileFlushSize = size;
+        return this;
+    }
+
     public MappedFile(String fileName, String fileDirPath, int fileSize) {
         this.fileName = fileName;
         this.fileDirPath = fileDirPath;
@@ -61,7 +66,7 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, fileFlushInterval, TimeUnit.MILLISECONDS);
+        ioWorker.scheduleAtFixedRate(this::flush, 0, 1, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {

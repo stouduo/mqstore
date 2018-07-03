@@ -31,7 +31,7 @@ public class MqStoreService {
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return file;
+        return file.setFileFlushSize(50 * 1024 * 1024);
     }
 
     public synchronized long put(byte[] message) {

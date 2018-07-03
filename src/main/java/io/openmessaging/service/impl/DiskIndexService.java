@@ -23,7 +23,7 @@ public class DiskIndexService implements IndexService {
 
     public DiskIndexService() {
         for (int i = 0; i < indexFileCount; i++) {
-            indexFiles.add(new MappedFile("index_" + i + ".idx", filePath, indexFileSize));
+            indexFiles.add(new MappedFile("index_" + i + ".idx", filePath, indexFileSize).setFileFlushSize(10 * 1024 * 1024));
         }
     }
 
