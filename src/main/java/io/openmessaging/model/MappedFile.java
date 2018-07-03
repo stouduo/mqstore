@@ -12,6 +12,7 @@ import java.nio.channels.FileLock;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicLong;
 
 public class MappedFile {
 
@@ -38,10 +39,10 @@ public class MappedFile {
     // 上一次刷数据
     private long lastFlushFileSize = 0;
 
-    private long writeSize = 0;
+    private AtomicLong writeSize = new AtomicLong(0);
     private ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
-        thread.setName("flush-ioWorker");
+        thread.setName("flush-ioWorker-" + fileName);
         thread.setDaemon(true);
         return thread;
     });
@@ -64,10 +65,10 @@ public class MappedFile {
     }
 
     private void flush() {
-        if (writeSize - lastFlushFileSize >= fileFlushSize) {
+        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
             mappedByteBuffer.force();
-            lastFlushFileSize = writeSize;
-            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:mmm").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize);
+            lastFlushFileSize = writeSize.get();
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:mmm").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize.get());
         }
     }
 
@@ -121,10 +122,10 @@ public class MappedFile {
     }
 
     public boolean appendData(byte[] data, int offset, int length) throws Exception {
-        writeSize = mappedByteBuffer.position() + length;
-        if (writeSize > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+        writeSize.getAndAdd(length);
+        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
 //            flush();
-            writeSize = writeSize - length;
+            writeSize.getAndAdd(-length);
             System.out.println("File="
                     + file.toURI().toString()
                     + " is written full.");
@@ -139,14 +140,14 @@ public class MappedFile {
     }
 
     public MappedFile writeInt(int offset, int value) {
-        writeSize += 4;
+        writeSize.getAndAdd(4);
         mappedByteBuffer.putInt(offset, value);
 //        flush();
         return this;
     }
 
     public MappedFile writeLong(int offset, long value) {
-        writeSize += 8;
+        writeSize.getAndAdd(8);
         mappedByteBuffer.putLong(offset, value);
 //        flush();
         return this;
