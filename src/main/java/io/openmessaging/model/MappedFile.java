@@ -40,9 +40,9 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
-    private ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
+    private static ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
         Thread thread = new Thread(r);
-        thread.setName("flush-ioWorker-" + fileName);
+        thread.setName("flush-ioWorker");
         thread.setDaemon(true);
         return thread;
     });
@@ -66,15 +66,17 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, 1000, TimeUnit.MILLISECONDS);
+        ioWorker.scheduleAtFixedRate(this::flush, 0, 2000, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
-        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
+//        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
+        if (writeSize.get() - lastFlushFileSize != 0) {
             mappedByteBuffer.force();
             lastFlushFileSize = writeSize.get();
             System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:mmm").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize.get());
         }
+//        }
     }
 
     /**

@@ -84,12 +84,13 @@ public class MqStoreService {
     }
 
     private MappedFile getActualFile(long offset) {
-        int fileIndex = (int) (offset / storeFileSize);
-        MappedFile storeFile = storeFiles.get(fileIndex);
-        if (offsetOutOfBound((int) (offset % storeFileSize), 8)) {
-            storeFile = storeFiles.get(fileIndex + 1);
-        }
-        return storeFile;
+//        int fileIndex = (int) (offset / storeFileSize);
+//        MappedFile storeFile = storeFiles.get(fileIndex);
+//        if (offsetOutOfBound((int) (offset % storeFileSize), 8)) {
+//            storeFile = storeFiles.get(fileIndex + 1);
+//        }
+//        return storeFile;
+        return storeFiles.get((int) (offset / storeFileSize));
     }
 
     public static void byteBuff2bytes(ByteBuffer byteBuffer, int offset, byte[] ret) {
