@@ -74,7 +74,7 @@ public class MappedFile {
         if (writeSize.get() - lastFlushFileSize != 0) {
             mappedByteBuffer.force();
             lastFlushFileSize = writeSize.get();
-            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss:mmm").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize.get());
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + ": flush " + fileName + " to disk:" + writeSize.get());
         }
 //        }
     }
