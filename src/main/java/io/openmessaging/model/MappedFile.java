@@ -66,7 +66,7 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, 1, TimeUnit.MILLISECONDS);
+        ioWorker.scheduleAtFixedRate(this::flush, 0, 1000, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
@@ -122,11 +122,11 @@ public class MappedFile {
      * @return
      * @throws Exception
      */
-    public boolean appendData(byte[] data) throws Exception {
+    public boolean appendData(byte[] data) {
         return appendData(data, 0, data.length);
     }
 
-    public boolean appendData(byte[] data, int offset, int length) throws Exception {
+    public boolean appendData(byte[] data, int offset, int length) {
         writeSize.getAndAdd(length);
         if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
 //            flush();

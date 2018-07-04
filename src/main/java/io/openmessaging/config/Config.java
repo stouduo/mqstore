@@ -21,7 +21,7 @@ public class Config {
     private static final String INDEX_UNIT_COUNT_PER_QUEUE = "index.unit.count.per.queue";
     private static final String SLOT_COUNT = "index.slot.count";
     public static final int INDEX_UNIT_SIZE = 12;
-    public static int defaultStoreSize = 20;
+    public static int defaultStoreSize = 1024*1024*1024;
     public static int defaultFlushInterval = 1000;
     public static int defaultFlushSize = 1024 * 512;
     private static ConcurrentMap<String, String> configs = new ConcurrentHashMap<>();

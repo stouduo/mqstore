@@ -27,70 +27,66 @@ public class MqStoreService {
     }
 
     public synchronized void put(String queueName, byte[] message) {
-        storeFlags.putIfAbsent(queueName, new QueueStoreFlag(0, 0));
+        storeFlags.putIfAbsent(queueName, new QueueStoreFlag(-1, 0));
         QueueStoreFlag flag = storeFlags.get(queueName);
         long lastOffset = flag.getLastOffset();
-        flag.updateOffset(logicOffset);
+        MappedFile writableFile;
         flag.updateSize();
         long fileOffset = logicOffset % storeFileSize;
-        MappedFile writableFile;
-        try {
-            if (fileOffset == 0) {
-                storeFiles.add(create());
-            }
-            writableFile = storeFiles.get(storeFiles.size() - 1);
-            if (offsetOutOfBound(fileOffset, 12 + message.length)) {
-                writableFile = create();
-                storeFiles.add(writableFile);
-            }
-            byte[] head = new byte[12];
-            ByteUtil.long2Bytes(head, 0, lastOffset);
-            ByteUtil.int2Bytes(head, 8, message.length);
-            byte[] data = new byte[head.length + message.length];
-            ByteUtil.byteMerger(data, head, message);
-            writableFile.appendData(data);
-            logicOffset += data.length;
-        } catch (Exception e) {
-            e.printStackTrace();
+        if (fileOffset == 0) {
+            storeFiles.add(create());
         }
+        writableFile = storeFiles.get(storeFiles.size() - 1);
+        if (offsetOutOfBound(fileOffset, 12 + message.length)) {
+            writableFile = create();
+            storeFiles.add(writableFile);
+            logicOffset += storeFileSize - fileOffset;
+        }
+        flag.updateOffset(logicOffset);
+        byte[] head = new byte[12];
+        ByteUtil.long2Bytes(head, 0, lastOffset);
+        ByteUtil.int2Bytes(head, 8, message.length);
+        byte[] data = new byte[12 + message.length];
+        ByteUtil.byteMerger(data, head, message);
+        writableFile.appendData(data);
+        logicOffset += data.length;
     }
 
     public List<byte[]> get(String queueName, long offset, int num) {
-        List<byte[]> msgs = new ArrayList<>(num);
+        LinkedList<byte[]> msgs = new LinkedList<>();
         QueueStoreFlag flag = storeFlags.get(queueName);
-        long lastOffset = flag.getLastOffset();
+        long preOffset = flag.getLastOffset();
         int msgSize = flag.getSize();
-        long preOffset = lastOffset;
         int i, msgLen;
         for (i = msgSize; i > offset + num; i--) {
             preOffset = getPreOffset(preOffset);
         }
         for (; i > offset; i--) {
             msgLen = getMsgLength(preOffset + 8);
-            msgs.add(getMsg(preOffset + 12, msgLen));
+            msgs.addFirst(getMsg(preOffset + 12, msgLen));
             preOffset = getPreOffset(preOffset);
         }
         return msgs;
     }
 
     private long getPreOffset(long offset) {
-        return getActualFile(offset).getLong((int) offset % storeFileSize);
+        return getActualFile(offset).getLong((int) (offset % storeFileSize));
     }
 
     private byte[] getMsg(long offset, int len) {
         byte[] msg = new byte[len];
-        byteBuff2bytes(getActualFile(offset).read((int) offset % storeFileSize, len), 0, msg);
+        byteBuff2bytes(getActualFile(offset).read((int) (offset % storeFileSize), len), 0, msg);
         return msg;
     }
 
     private int getMsgLength(long offset) {
-        return getActualFile(offset).getInt((int) offset % storeFileSize);
+        return getActualFile(offset).getInt((int) (offset % storeFileSize));
     }
 
     private MappedFile getActualFile(long offset) {
-        int fileIndex = (int) offset / storeFileSize;
+        int fileIndex = (int) (offset / storeFileSize);
         MappedFile storeFile = storeFiles.get(fileIndex);
-        if (offsetOutOfBound((int) offset % storeFileSize, 8)) {
+        if (offsetOutOfBound((int) (offset % storeFileSize), 8)) {
             storeFile = storeFiles.get(fileIndex + 1);
         }
         return storeFile;
