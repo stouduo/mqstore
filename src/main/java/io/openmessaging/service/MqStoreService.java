@@ -2,15 +2,14 @@ package io.openmessaging.service;
 
 import io.openmessaging.config.Config;
 import io.openmessaging.model.MappedFile;
+import io.openmessaging.model.QueueStoreFlag;
 import io.openmessaging.util.ByteUtil;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.util.*;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
 
 public class MqStoreService {
     private static int storeFileSize = Config.mqStoreFileSize;
@@ -18,57 +17,83 @@ public class MqStoreService {
     private static AtomicInteger fileNameIndex = new AtomicInteger(0);
     private static String filePath = Config.rootPath + Config.mqStorePath;
     private static long logicOffset = 0;
-    private static final int MAGIC_CODE = 0x1dcfc;
+    private static Map<String, QueueStoreFlag> storeFlags = new ConcurrentHashMap<>();
 
     public MqStoreService() {
     }
 
     private MappedFile create() {
-        MappedFile file = new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize);
-        try {
-            file.appendData(ByteUtil.int2Bytes(MAGIC_CODE));
-            logicOffset += 4;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-        return file.setFileFlushSize(50 * 1024 * 1024);
+        return new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize).setFileFlushSize(50 * 1024 * 1024);
     }
 
-    public synchronized long put(byte[] message) {
-        long retOffset = 0, fileOffset = logicOffset % storeFileSize;
+    public synchronized void put(String queueName, byte[] message) {
+        storeFlags.putIfAbsent(queueName, new QueueStoreFlag(0, 0));
+        QueueStoreFlag flag = storeFlags.get(queueName);
+        long lastOffset = flag.getLastOffset();
+        flag.updateOffset(logicOffset);
+        flag.updateSize();
+        long fileOffset = logicOffset % storeFileSize;
+        MappedFile writableFile;
         try {
-            MappedFile writableFile;
             if (fileOffset == 0) {
                 storeFiles.add(create());
             }
-            fileOffset = logicOffset % storeFileSize;
-            retOffset = logicOffset;
             writableFile = storeFiles.get(storeFiles.size() - 1);
-            if (offsetOutOfBound(fileOffset, message.length)) {
-                int offset = (int) (storeFileSize - fileOffset);
-                writableFile.appendData(message, 0, offset);
+            if (offsetOutOfBound(fileOffset, 12 + message.length)) {
                 writableFile = create();
-                writableFile.appendData(message, offset, (int) (fileOffset + message.length - storeFileSize));
                 storeFiles.add(writableFile);
-            } else {
-                writableFile.appendData(message);
             }
-            logicOffset += message.length;
+            byte[] head = new byte[12];
+            ByteUtil.long2Bytes(head, 0, lastOffset);
+            ByteUtil.int2Bytes(head, 8, message.length);
+            byte[] data = new byte[head.length + message.length];
+            ByteUtil.byteMerger(data, head, message);
+            writableFile.appendData(data);
+            logicOffset += data.length;
         } catch (Exception e) {
             e.printStackTrace();
         }
-        return retOffset;
     }
 
-    public byte[] get(long offset, int size) {
-        byte[] ret = new byte[size];
+    public List<byte[]> get(String queueName, long offset, int num) {
+        List<byte[]> msgs = new ArrayList<>(num);
+        QueueStoreFlag flag = storeFlags.get(queueName);
+        long lastOffset = flag.getLastOffset();
+        int msgSize = flag.getSize();
+        long preOffset = lastOffset;
+        int i, msgLen;
+        for (i = msgSize; i > offset + num; i--) {
+            preOffset = getPreOffset(preOffset);
+        }
+        for (; i > offset; i--) {
+            msgLen = getMsgLength(preOffset + 8);
+            msgs.add(getMsg(preOffset + 12, msgLen));
+            preOffset = getPreOffset(preOffset);
+        }
+        return msgs;
+    }
+
+    private long getPreOffset(long offset) {
+        return getActualFile(offset).getLong((int) offset % storeFileSize);
+    }
+
+    private byte[] getMsg(long offset, int len) {
+        byte[] msg = new byte[len];
+        byteBuff2bytes(getActualFile(offset).read((int) offset % storeFileSize, len), 0, msg);
+        return msg;
+    }
+
+    private int getMsgLength(long offset) {
+        return getActualFile(offset).getInt((int) offset % storeFileSize);
+    }
+
+    private MappedFile getActualFile(long offset) {
         int fileIndex = (int) offset / storeFileSize;
-        int fileOffset = (int) offset % storeFileSize;
-        if (offsetOutOfBound(fileOffset, size)) {
-            byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, storeFileSize - fileOffset), 0, ret);
-            byteBuff2bytes(storeFiles.get(fileIndex + 1).read(4, fileOffset + size - storeFileSize), 3, ret);
-        } else byteBuff2bytes(storeFiles.get(fileIndex).read(fileOffset, size), -1, ret);
-        return ret;
+        MappedFile storeFile = storeFiles.get(fileIndex);
+        if (offsetOutOfBound((int) offset % storeFileSize, 8)) {
+            storeFile = storeFiles.get(fileIndex + 1);
+        }
+        return storeFile;
     }
 
     public static void byteBuff2bytes(ByteBuffer byteBuffer, int offset, byte[] ret) {

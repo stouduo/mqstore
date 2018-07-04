@@ -17,23 +17,17 @@ public class MessageStoreServiceImpl implements MessageStoreService {
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
 //        this.indexService = new RamIndexService();
-        this.indexService = new DiskIndexService();
+//        this.indexService = new DiskIndexService();
     }
 
     @Override
     public Collection<byte[]> get(String queueName, long offset, long num) {
-        List<byte[]> ret = new ArrayList<>();
-        List<long[]> indices = indexService.get(queueName, offset, num);
-        for (int i = 0; i < indices.size(); i++) {
-            long[] index = indices.get(i);
-            ret.add(mqStoreService.get(index[0], (int) index[1]));
-        }
-        return ret;
+        return mqStoreService.get(queueName, offset, (int) num);
     }
 
     @Override
     public void store(String queueName, byte[] message) {
-        indexService.put(queueName, mqStoreService.put(message), message.length);
+        mqStoreService.put(queueName, message);
     }
 
     public static void main(String[] args) {

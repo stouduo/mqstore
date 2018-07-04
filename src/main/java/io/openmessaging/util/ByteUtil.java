@@ -10,6 +10,21 @@ public class ByteUtil {
         return byteNum;
     }
 
+    public static void byteMerger(byte[] dest, byte[]... src) {
+        int index = 0;
+        for (byte[] bts : src) {
+            System.arraycopy(bts, 0, dest, index, bts.length);
+            index += bts.length;
+        }
+    }
+
+    public static void int2Bytes(byte[] bytes, int offset, int num) {
+        for (int ix = offset; ix < offset + 4; ++ix) {
+            int o = 32 - (ix + 1) * 8;
+            bytes[ix] = (byte) ((num >> o) & 0xff);
+        }
+    }
+
     public static int bytes2Int(byte[] byteNum, int offset) {
         int num = 0;
         for (int ix = offset; ix < offset + 4; ++ix) {
