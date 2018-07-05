@@ -1,23 +1,16 @@
 package io.openmessaging.service.impl;
 
-import io.openmessaging.model.Index;
-import io.openmessaging.service.IndexService;
 import io.openmessaging.service.MessageStoreService;
 import io.openmessaging.service.MqStoreService;
+import io.openmessaging.util.ByteUtil;
 
-import java.util.ArrayList;
 import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
 
 public class MessageStoreServiceImpl implements MessageStoreService {
     private MqStoreService mqStoreService;
-    private IndexService indexService;
 
     public MessageStoreServiceImpl() {
         this.mqStoreService = new MqStoreService();
-//        this.indexService = new RamIndexService();
-//        this.indexService = new DiskIndexService();
     }
 
     @Override
@@ -27,7 +20,7 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     @Override
     public void store(String queueName, byte[] message) {
-        mqStoreService.put(queueName, message);
+        mqStoreService.put(queueName, ByteUtil.compress(message));
     }
 
     public static void main(String[] args) {

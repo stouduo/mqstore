@@ -1,18 +1,9 @@
 package io.openmessaging.service;
 
-import io.openmessaging.config.Config;
-import io.openmessaging.model.Index;
+import io.openmessaging.model.QueueStoreFlag;
 
-import java.util.Collection;
-import java.util.List;
+public interface IndexService<T extends Comparable> {
+    void index(String queue, QueueStoreFlag flag);
 
-public interface IndexService {
-    int indexUnitCountPerQueue = Config.indexUnitCountPerQueue;
-    int slotCount = Config.slotCount;
-
-    void put(String key, long offset, int size);
-
-    List<long[]> get(String key, long offset, long num);
-
-    long[] get(String key, int index);
+    QueueStoreFlag query(String queue, T key);
 }

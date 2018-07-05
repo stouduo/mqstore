@@ -11,35 +11,28 @@ import java.util.concurrent.ConcurrentMap;
 public class Config {
     public static final String APP_PROFILES_ACTIVE = "app.profiles.active";
     public static final String MQ_STORE_ROOT_PATH = "mq.store.root.path";
-    private static final String INDEX_FILE_COUNT = "index.file.count";
     public static final String MQ_STORE_PATH = "mq.store.path";
-    public static final String INDEX_STORE_PATH = "index.store.path";
+    public static final String INDEX_COUNT = "index.count";
     public static final String MQ_STORE_MAPPED_FILE_SIZE = "mq.store.mapped.file.size";
-    //    public static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
     private static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
-    private static final String INDEX_UNIT_COUNT_PER_QUEUE = "index.unit.count.per.queue";
-    private static final String SLOT_COUNT = "index.slot.count";
-    public static final int INDEX_UNIT_SIZE = 12;
-    public static int defaultStoreSize = 1024*1024*1024;
+    public static int defaultStoreSize = Integer.MAX_VALUE;
     public static int defaultFlushInterval = 1000;
     public static int defaultFlushSize = 1024 * 512;
+    public static int defaultIndexCount = 40;
     private static ConcurrentMap<String, String> configs = new ConcurrentHashMap<>();
-
 
     static {
         initConfig();
     }
 
+
     public static String rootPath = getOrDefaultValue(MQ_STORE_ROOT_PATH, System.getProperty("user.home") + File.separator + "alidata1" + File.separator + "race2018" + File.separator + "data");
-    public static String indexStorePath = getOrDefaultValue(INDEX_STORE_PATH, File.separator + "index");
     public static String mqStorePath = getOrDefaultValue(MQ_STORE_PATH, File.separator + "mqstore");
     public static int mqStoreFileSize = Integer.parseInt(getOrDefaultValue(MQ_STORE_MAPPED_FILE_SIZE, defaultStoreSize + ""));
     public static int fileFlushInterval = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_INTERVAL, defaultFlushInterval + ""));
     public static int fileFlushSize = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_SIZE, defaultFlushSize + ""));
-    public static int slotCount = Integer.parseInt(getOrDefaultValue(SLOT_COUNT, 1200 + ""));
-    public static int indexUnitCountPerQueue = Integer.parseInt(getOrDefaultValue(INDEX_UNIT_COUNT_PER_QUEUE, 20000 + ""));
-    public static int indexFileCount = Integer.parseInt(getOrDefaultValue(INDEX_FILE_COUNT, 20000 + ""));
+    public static int indexCount = Integer.parseInt(getOrDefaultValue(INDEX_COUNT, defaultIndexCount + ""));
 
     public static void main(String[] args) {
         System.out.println(configs.toString());

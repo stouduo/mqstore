@@ -1,6 +1,6 @@
 package io.openmessaging.model;
 
-public class QueueStoreFlag {
+public class QueueStoreFlag implements Cloneable {
     private long lastOffset;
     private int size;
 
@@ -31,5 +31,14 @@ public class QueueStoreFlag {
 
     public void updateSize() {
         size += 1;
+    }
+
+    public QueueStoreFlag clone() {
+        try {
+            return (QueueStoreFlag) super.clone();
+        } catch (CloneNotSupportedException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }
