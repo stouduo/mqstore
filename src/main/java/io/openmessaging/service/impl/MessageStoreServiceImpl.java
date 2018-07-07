@@ -20,7 +20,7 @@ public class MessageStoreServiceImpl implements MessageStoreService {
 
     @Override
     public void store(String queueName, byte[] message) {
-        mqStoreService.put(queueName, ByteUtil.compress(message));
+        mqStoreService.put(queueName, message);
     }
 
     public static void main(String[] args) {
