@@ -2,31 +2,27 @@ package io.openmessaging.service;
 
 import io.openmessaging.config.Config;
 import io.openmessaging.model.MappedFile;
-import io.openmessaging.model.QueueStoreFlag;
+import io.openmessaging.model.QueueStoreData;
 import io.openmessaging.service.impl.HashArrayIndexService;
-import io.openmessaging.service.impl.HashMapIndexService;
+import io.openmessaging.util.ByteUtil;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.locks.ReentrantLock;
 
-public class MqStoreService implements IndexService<Integer> {
+public class MqStoreService {
     private static int storeFileSize = Config.mqStoreFileSize;
     private List<MappedFile> storeFiles = new ArrayList<>(10);
     private static AtomicInteger fileNameIndex = new AtomicInteger(0);
     private static String filePath = Config.rootPath + Config.mqStorePath;
     private static long logicOffset = 0;
-    private static Map<String, QueueStoreFlag> storeFlags = new ConcurrentHashMap<>();
-    private IndexService indexService;
     private static int indexCount = Config.indexCount;
+    private static Map<String, QueueStoreData> storeDatas = new ConcurrentHashMap<>();
+    private IndexService indexService;
 
     public MqStoreService() {
-//        indexService = new BtreeIndexService();
-//        indexService = this;
-//        indexService = new HashMapIndexService();
         indexService = new HashArrayIndexService();
     }
 
@@ -35,60 +31,75 @@ public class MqStoreService implements IndexService<Integer> {
     }
 
     public void put(String queueName, byte[] message) {
-        storeFlags.putIfAbsent(queueName, new QueueStoreFlag(-1, 0));
+        storeDatas.putIfAbsent(queueName, new QueueStoreData());
         MappedFile writableFile;
-        QueueStoreFlag flag = storeFlags.get(queueName);
+        QueueStoreData storeData = storeDatas.get(queueName);
+        byte[] data = new byte[4 + message.length];
+        ByteUtil.byteMerger(data, ByteUtil.int2Bytes(message.length), message);
         synchronized (this) {
-            flag.updateSize();
-            long lastOffset = flag.getLastOffset();
-            long fileOffset = logicOffset % storeFileSize;
-
-            if (fileOffset == 0) {
-                storeFiles.add(create());
+            storeData.setDirtyData(data);
+            storeData.updateSize();
+            if (storeData.getSize() % indexCount == 0) {
+                indexService.index(storeData.getId(), storeData.getSize(), logicOffset);
+                long fileOffset = logicOffset % storeFileSize;
+                if (fileOffset == 0) {
+                    storeFiles.add(create());
+                }
+                writableFile = storeFiles.get(storeFiles.size() - 1);
+                if (offsetOutOfBound(fileOffset, 4 + message.length)) {
+                    writableFile = create();
+                    storeFiles.add(writableFile);
+                    logicOffset += storeFileSize - fileOffset;
+                }
+                writableFile.appendData(storeData.getDirtyData());
+                logicOffset += storeData.getDirtyData().capacity();
             }
-            writableFile = storeFiles.get(storeFiles.size() - 1);
-            if (offsetOutOfBound(fileOffset, 12 + message.length)) {
-                writableFile = create();
-                storeFiles.add(writableFile);
-                logicOffset += storeFileSize - fileOffset;
-            }
-            flag.updateOffset(logicOffset);
-            if (flag.getSize() % indexCount == 0) {
-                indexService.index(queueName, flag);
-            }
-            writableFile.writeLong(lastOffset);
-            writableFile.writeInt(message.length);
-            writableFile.appendData(message);
-            logicOffset += 12 + message.length;
         }
     }
 
-    public List<byte[]> get(String queueName, long offset, int num) {
+    public List<byte[]> get(String queueName, long startIndex, int num) {
         LinkedList<byte[]> msgs = new LinkedList<>();
-        QueueStoreFlag flag = storeFlags.get(queueName);
-        flag = getNearestOffset(queueName, (int) offset + num, flag);
-        long preOffset = flag.getLastOffset();
-        int i, msgLen;
-        for (i = flag.getSize(); i > offset + num; i--) {
-            preOffset = getPreOffset(preOffset);
+        QueueStoreData storeData = storeDatas.get(queueName);
+        long[] startOffsets = getStartOffset(storeData.getId(), startIndex);
+        long startOffset = startOffsets[0];
+        int i = 0, msgLen;
+        for (; i < startIndex; i++) {
+            startOffset = getNextOffset(startOffset);
         }
-        for (; i > offset; i--) {
-            msgLen = getMsgLength(preOffset + 8);
-            msgs.addFirst(getMsg(preOffset + 12, msgLen));
-            preOffset = getPreOffset(preOffset);
+        int endIndex = Math.min(storeData.getSize(), (int) startIndex + num);
+        if (startOffsets.length == 1) {
+            for (; i < endIndex; i++) {
+                msgLen = getMsgLength(startOffset );
+                msgs.addFirst(getMsg(startOffset + 4, msgLen));
+                startOffset = getNextOffset(startOffset);
+            }
+        } else {
+            for (; i < Math.min(endIndex, indexCount - i); i++) {
+                msgLen = getMsgLength(startOffset);
+                msgs.addFirst(getMsg(startOffset + 4, msgLen));
+                startOffset = getNextOffset(startOffset);
+            }
+            for (startOffset = startOffsets[1]; i < endIndex; i++) {
+                msgLen = getMsgLength(startOffset);
+                msgs.addFirst(getMsg(startOffset + 4, msgLen));
+                startOffset = getNextOffset(startOffset);
+            }
         }
         return msgs;
     }
 
-    private long getPreOffset(long offset) {
-        return getActualFile(offset).getLong((int) (offset % storeFileSize));
+    private long[] getStartOffset(int queue, long startIndex) {
+        int index = 0;
+        for (; index < startIndex; index += indexCount) ;
+        if (startIndex % indexCount == 0) {
+            if (startIndex != 0) index -= indexCount;
+            return new long[]{indexService.query(queue, index)};
+        } else
+            return new long[]{indexService.query(queue, index - indexCount), indexService.query(queue, index)};
     }
 
-    private QueueStoreFlag getNearestOffset(String queue, int readIndex, QueueStoreFlag lastFlag) {
-        if (readIndex >= lastFlag.getSize()) return lastFlag;
-        int index = 0;
-        while (index < readIndex) index += indexCount;
-        return indexService.query(queue, index);
+    private long getNextOffset(long offset) {
+        return getActualFile(offset).getLong((int) (offset % storeFileSize));
     }
 
     private byte[] getMsg(long offset, int len) {
@@ -114,12 +125,4 @@ public class MqStoreService implements IndexService<Integer> {
         return offset < storeFileSize && offset + size > storeFileSize;
     }
 
-    @Override
-    public void index(String queue, QueueStoreFlag flag) {
-    }
-
-    @Override
-    public QueueStoreFlag query(String queue, Integer key) {
-        return storeFlags.get(queue);
-    }
 }

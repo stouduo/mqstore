@@ -16,7 +16,7 @@ public class Config {
     public static final String MQ_STORE_MAPPED_FILE_SIZE = "mq.store.mapped.file.size";
     public static final String MAPPED_FILE_FLUSH_DISK_SIZE = "mapped.file.flush.disk.size";
     private static final String MAPPED_FILE_FLUSH_DISK_INTERVAL = "mapped.file.flush.disk.interval";
-    public static int defaultStoreSize = Integer.MAX_VALUE;
+    public static int defaultStoreSize = 100;
     public static int defaultFlushInterval = 1000;
     public static int defaultFlushSize = 1024 * 512;
     public static int defaultIndexCount = 40;
