@@ -40,7 +40,7 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
-    private static ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
+    private static ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(4, r -> {
         Thread thread = new Thread(r);
         thread.setName("flush-ioWorker");
         thread.setDaemon(true);
@@ -126,6 +126,25 @@ public class MappedFile {
      */
     public boolean appendData(byte[] data) {
         return appendData(data, 0, data.length);
+    }
+
+    public boolean appendData(int offset, byte[] data) {
+        writeSize.getAndAdd(data.length);
+        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+//            flush();
+            writeSize.getAndAdd(-data.length);
+            System.out.println("File="
+                    + file.toURI().toString()
+                    + " is written full.");
+            System.out.println("already write data length:"
+                    + writeSize
+                    + ", max file size=" + fileSize);
+            return false;
+        }
+        for (int i = offset; i < offset + data.length; i++) {
+            this.mappedByteBuffer.put(i, data[i - offset]);
+        }
+        return true;
     }
 
     public boolean appendData(byte[] data, int offset, int length) {

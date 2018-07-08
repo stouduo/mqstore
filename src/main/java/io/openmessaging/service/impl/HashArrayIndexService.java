@@ -1,29 +1,22 @@
 package io.openmessaging.service.impl;
 
-import io.openmessaging.model.QueueStoreFlag;
+import io.openmessaging.model.QueueMetaData;
 import io.openmessaging.service.IndexService;
-
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class HashArrayIndexService implements IndexService<Integer> {
     //    private static int delta = 10;
     private static int queueCount = 1010000;
     private long[][] indices = new long[queueCount][200];
-    private static Map<String, Integer> queueIds = new HashMap<>();
-    private static AtomicInteger idGene = new AtomicInteger(0);
 
 
     @Override
-    public void index(String queue, QueueStoreFlag flag) {
-        queueIds.putIfAbsent(queue, idGene.getAndIncrement());
-        indices[queueIds.get(queue)][flag.getSize() / indexCount - 1] = flag.getLastOffset();
+    public void index(QueueMetaData queueMetaData) {
+        indices[queueMetaData.getId()][queueMetaData.getMsgCount() / indexCount] = queueMetaData.getStartOffset();
     }
 
     @Override
-    public QueueStoreFlag query(String queue, Integer key) {
-        return new QueueStoreFlag(indices[queueIds.get(queue)][key / indexCount - 1], key);
+    public QueueMetaData query(QueueMetaData queueMetaData, Integer readIndex) {
+        return new QueueMetaData().setMsgCount(readIndex).setStartOffset(indices[queueMetaData.getId()][readIndex / indexCount]);
     }
 
 //    public int arrayIndex(String queue) {
