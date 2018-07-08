@@ -37,17 +37,18 @@ public class MqStoreService implements IndexService<Integer> {
         metaDatas.putIfAbsent(queueName, new QueueMetaData(blockCountPerFile, blockSize));
         QueueMetaData queueMetaData = metaDatas.get(queueName);
         MappedFile writableFile = storeFiles.get(queueMetaData.getFileIndex());
+        int endOffset;
         synchronized (this) {
-            int endOffset = (int) queueMetaData.getEndOffset();
+            endOffset = (int) queueMetaData.getEndOffset();
             queueMetaData.setStartOffset(queueMetaData.getEndOffset());
             if (queueMetaData.getMsgCount() % indexCount == 0) {
                 indexService.index(queueMetaData);
             }
-            writableFile.writeInt(endOffset, message.length);
-            writableFile.appendData(endOffset + 4, message);
             queueMetaData.updateMsgCount();
             queueMetaData.updateEndOffset(4 + message.length);
         }
+        writableFile.writeInt(endOffset, message.length);
+        writableFile.appendData(endOffset + 4, message);
     }
 
     public List<byte[]> get(String queueName, long readIndex, int num) {
