@@ -117,6 +117,21 @@ public class MappedFile {
         return byteBuffer;
     }
 
+    public synchronized ByteBuffer readByChannel(int offset, int size) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+        try {
+            fileChannel.read(byteBuffer, offset);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffer.flip();
+        return byteBuffer;
+    }
+
+    public int getIntByChannel(int offset) {
+        return readByChannel(offset, 4).getInt();
+    }
+
     /**
      * 在文件末尾追加数据
      *
@@ -126,6 +141,15 @@ public class MappedFile {
      */
     public boolean appendData(byte[] data) {
         return appendData(data, 0, data.length);
+    }
+
+    public boolean appendDataByChannel(byte[] data) {
+        try {
+            fileChannel.write(ByteBuffer.wrap(data));
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return true;
     }
 
     public boolean appendData(byte[] data, int offset, int length) {

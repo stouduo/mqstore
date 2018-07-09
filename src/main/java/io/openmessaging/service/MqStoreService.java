@@ -93,12 +93,12 @@ public class MqStoreService implements IndexService<Integer> {
 
     private byte[] getMsg(long offset, int len) {
         byte[] msg = new byte[len];
-        byteBuff2bytes(getActualFile(offset).read((int) (offset % storeFileSize), len), 0, msg);
+        byteBuff2bytes(getActualFile(offset).readByChannel((int) (offset % storeFileSize), len), 0, msg);
         return msg;
     }
 
     private int getMsgLength(long offset) {
-        return getActualFile(offset).getInt((int) (offset % storeFileSize));
+        return getActualFile(offset).getIntByChannel((int) (offset % storeFileSize));
     }
 
     private MappedFile getActualFile(long offset) {
