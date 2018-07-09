@@ -4,8 +4,7 @@ import io.openmessaging.service.IndexService;
 
 public class HashArrayIndexService implements IndexService<Integer> {
     //    private static int delta = 10;
-    private static int queueCount = 1000100;
-    private long[][] indices = new long[queueCount][205];
+    private long[][] indices = new long[queueCount][idxCount];
 
 
     @Override

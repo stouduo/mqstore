@@ -244,4 +244,9 @@ public class MappedFile {
     public MappedByteBuffer getMappedByteBuffer() {
         return mappedByteBuffer;
     }
+
+    public MappedFile setFileFlushInterval(int fileFlushInterval) {
+        this.fileFlushInterval = fileFlushInterval;
+        return this;
+    }
 }

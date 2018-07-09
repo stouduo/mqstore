@@ -3,6 +3,7 @@ package io.openmessaging.service;
 import io.openmessaging.config.Config;
 import io.openmessaging.model.MappedFile;
 import io.openmessaging.model.QueueStoreData;
+import io.openmessaging.service.impl.FileIndexService;
 import io.openmessaging.service.impl.HashArrayIndexService;
 import io.openmessaging.util.ByteUtil;
 
@@ -23,7 +24,8 @@ public class MqStoreService {
     private IndexService indexService;
 
     public MqStoreService() {
-        indexService = new HashArrayIndexService();
+//        indexService = new HashArrayIndexService();
+        indexService = new FileIndexService();
     }
 
     private MappedFile create() {
