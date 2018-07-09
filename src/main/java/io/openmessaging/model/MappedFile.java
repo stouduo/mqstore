@@ -144,6 +144,24 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
+    public boolean appendData(ByteBuffer byteBuffer) {
+        writeSize.getAndAdd(byteBuffer.position());
+        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+//            flush();
+            writeSize.getAndAdd(-byteBuffer.position());
+            System.out.println("File="
+                    + file.toURI().toString()
+                    + " is written full.");
+            System.out.println("already write data length:"
+                    + writeSize
+                    + ", max file size=" + fileSize);
+            return false;
+        }
+        byteBuffer.flip();
+        mappedByteBuffer.put(byteBuffer);
+        byteBuffer.clear();
+        return true;
+    }
 
     public boolean appendData(byte[] data, int offset, int length) {
         writeSize.getAndAdd(length);

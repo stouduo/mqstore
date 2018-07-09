@@ -36,26 +36,25 @@ public class MqStoreService {
         storeDatas.putIfAbsent(queueName, new QueueStoreData());
         MappedFile writableFile;
         QueueStoreData storeData = storeDatas.get(queueName);
-        byte[] data = new byte[4 + message.length];
-        ByteUtil.byteMerger(data, ByteUtil.int2Bytes(message.length), message);
         synchronized (this) {
-            storeData.setDirtyData(data);
+            storeData.putDirtyData(message.length).putDirtyData(message);
             storeData.updateSize();
             if (storeData.getSize() % indexCount == 0) {
                 long fileOffset = logicOffset % storeFileSize;
-                byte[] dirtyData = storeData.getDirtyData();
+                ByteBuffer dirtyData = storeData.getDirtyData();
+                int dirtyDataLen = dirtyData.position();
                 if (fileOffset == 0) {
                     storeFiles.add(create());
                 }
                 writableFile = storeFiles.get(storeFiles.size() - 1);
-                if (offsetOutOfBound(fileOffset, dirtyData.length)) {
+                if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
                     writableFile = create();
                     storeFiles.add(writableFile);
                     logicOffset += storeFileSize - fileOffset;
                 }
                 indexService.index(storeData.getId(), storeData.getSize(), logicOffset);
                 writableFile.appendData(dirtyData);
-                logicOffset += dirtyData.length;
+                logicOffset += dirtyDataLen;
             }
         }
     }
