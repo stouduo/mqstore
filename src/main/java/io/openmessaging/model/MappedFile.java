@@ -140,7 +140,6 @@ public class MappedFile {
                     + ", max file size=" + fileSize);
             return false;
         }
-        byteBuffer.flip();
         this.mappedByteBuffer.put(byteBuffer);
         byteBuffer.clear();
         return true;

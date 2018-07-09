@@ -12,7 +12,7 @@ public class QueueStoreData {
     public QueueStoreData() {
         this.id = idGene.getAndIncrement();
         this.size = 0;
-        this.dirtyData = ByteBuffer.allocate(0);
+        this.dirtyData = ByteBuffer.allocateDirect(0);
     }
 
     public int getId() {
@@ -24,11 +24,12 @@ public class QueueStoreData {
     }
 
     public QueueStoreData setDirtyData(byte[] dirtyData) {
-        ByteBuffer dirty = ByteBuffer.allocate(this.dirtyData.capacity() + dirtyData.length);
+        ByteBuffer dirty = ByteBuffer.allocateDirect(this.dirtyData.capacity() + dirtyData.length);
         dirty.put(this.dirtyData);
         dirty.put(dirtyData);
         this.dirtyData.clear();
         this.dirtyData = dirty;
+        this.dirtyData.position(0);
         return this;
     }
 

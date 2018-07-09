@@ -64,25 +64,25 @@ public class MqStoreService {
         long startOffset = startOffsets[0];
         int i = 0, msgLen;
         for (; i < startIndex; i++) {
-            startOffset = getNextOffset(startOffset);
+            startOffset += getMsgLength(startOffset) + 4;
         }
         int endIndex = Math.min(storeData.getSize(), (int) startIndex + num);
         if (startOffsets.length == 1) {
             for (; i < endIndex; i++) {
-                msgLen = getMsgLength(startOffset );
-                msgs.addFirst(getMsg(startOffset + 4, msgLen));
-                startOffset = getNextOffset(startOffset);
+                msgLen = getMsgLength(startOffset);
+                msgs.add(getMsg(startOffset + 4, msgLen));
+                startOffset += msgLen + 4;
             }
         } else {
             for (; i < Math.min(endIndex, indexCount - i); i++) {
                 msgLen = getMsgLength(startOffset);
-                msgs.addFirst(getMsg(startOffset + 4, msgLen));
-                startOffset = getNextOffset(startOffset);
+                msgs.add(getMsg(startOffset + 4, msgLen));
+                startOffset += msgLen + 4;
             }
             for (startOffset = startOffsets[1]; i < endIndex; i++) {
                 msgLen = getMsgLength(startOffset);
-                msgs.addFirst(getMsg(startOffset + 4, msgLen));
-                startOffset = getNextOffset(startOffset);
+                msgs.add(getMsg(startOffset + 4, msgLen));
+                startOffset += msgLen + 4;
             }
         }
         return msgs;
@@ -96,10 +96,6 @@ public class MqStoreService {
             return new long[]{indexService.query(queue, index)};
         } else
             return new long[]{indexService.query(queue, index - indexCount), indexService.query(queue, index)};
-    }
-
-    private long getNextOffset(long offset) {
-        return getActualFile(offset).getLong((int) (offset % storeFileSize));
     }
 
     private byte[] getMsg(long offset, int len) {
