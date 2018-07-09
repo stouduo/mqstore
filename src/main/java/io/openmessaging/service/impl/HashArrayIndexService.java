@@ -19,7 +19,7 @@ public class HashArrayIndexService implements IndexService<Integer> {
 
     @Override
     public long query(int queue, Integer key) {
-        return indices[queue][key / indexCount];
+        return indices[queue][key];
     }
 
 }

@@ -40,19 +40,20 @@ public class MqStoreService {
             storeData.setDirtyData(data);
             storeData.updateSize();
             if (storeData.getSize() % indexCount == 0) {
-                indexService.index(storeData.getId(), storeData.getSize(), logicOffset);
                 long fileOffset = logicOffset % storeFileSize;
+                byte[] dirtyData = storeData.getDirtyData();
                 if (fileOffset == 0) {
                     storeFiles.add(create());
                 }
                 writableFile = storeFiles.get(storeFiles.size() - 1);
-                if (offsetOutOfBound(fileOffset, 4 + message.length)) {
+                if (offsetOutOfBound(fileOffset, dirtyData.length)) {
                     writableFile = create();
                     storeFiles.add(writableFile);
                     logicOffset += storeFileSize - fileOffset;
                 }
-                writableFile.appendData(storeData.getDirtyData());
-                logicOffset += storeData.getDirtyData().capacity();
+                indexService.index(storeData.getId(), storeData.getSize(), logicOffset);
+                writableFile.appendData(dirtyData);
+                logicOffset += dirtyData.length;
             }
         }
     }
@@ -62,7 +63,7 @@ public class MqStoreService {
         QueueStoreData storeData = storeDatas.get(queueName);
         long[] startOffsets = getStartOffset(storeData.getId(), startIndex);
         long startOffset = startOffsets[0];
-        int i = 0, msgLen;
+        int i = (int) startIndex / indexCount * indexCount, msgLen;
         for (; i < startIndex; i++) {
             startOffset += getMsgLength(startOffset) + 4;
         }
@@ -74,11 +75,13 @@ public class MqStoreService {
                 startOffset += msgLen + 4;
             }
         } else {
-            for (; i < Math.min(endIndex, indexCount - i); i++) {
+            endIndex = Math.min(endIndex, indexCount * (i / indexCount + 1));
+            for (; i < endIndex; i++) {
                 msgLen = getMsgLength(startOffset);
                 msgs.add(getMsg(startOffset + 4, msgLen));
                 startOffset += msgLen + 4;
             }
+            endIndex = Math.min(storeData.getSize(), (int) startIndex + num);
             for (startOffset = startOffsets[1]; i < endIndex; i++) {
                 msgLen = getMsgLength(startOffset);
                 msgs.add(getMsg(startOffset + 4, msgLen));
@@ -89,13 +92,11 @@ public class MqStoreService {
     }
 
     private long[] getStartOffset(int queue, long startIndex) {
-        int index = 0;
-        for (; index < startIndex; index += indexCount) ;
+        int index = (int) startIndex / indexCount;
         if (startIndex % indexCount == 0) {
-            if (startIndex != 0) index -= indexCount;
             return new long[]{indexService.query(queue, index)};
         } else
-            return new long[]{indexService.query(queue, index - indexCount), indexService.query(queue, index)};
+            return new long[]{indexService.query(queue, index), indexService.query(queue, index + 1)};
     }
 
     private byte[] getMsg(long offset, int len) {

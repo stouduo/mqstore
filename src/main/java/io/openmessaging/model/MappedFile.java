@@ -128,22 +128,6 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
-    public boolean appendData(ByteBuffer byteBuffer) {
-        writeSize.getAndAdd(byteBuffer.capacity());
-        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
-            writeSize.getAndAdd(-byteBuffer.capacity());
-            System.out.println("File="
-                    + file.toURI().toString()
-                    + " is written full.");
-            System.out.println("already write data length:"
-                    + writeSize
-                    + ", max file size=" + fileSize);
-            return false;
-        }
-        this.mappedByteBuffer.put(byteBuffer);
-        byteBuffer.clear();
-        return true;
-    }
 
     public boolean appendData(byte[] data, int offset, int length) {
         writeSize.getAndAdd(length);
@@ -160,6 +144,24 @@ public class MappedFile {
         }
         this.mappedByteBuffer.put(data, offset, length);
 //        flush();
+        return true;
+    }
+
+    public boolean appendData(int offset, byte[] data) {
+        writeSize.getAndAdd(data.length);
+        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
+            writeSize.getAndAdd(-data.length);
+            System.out.println("File="
+                    + file.toURI().toString()
+                    + " is written full.");
+            System.out.println("already write data length:"
+                    + writeSize
+                    + ", max file size=" + fileSize);
+            return false;
+        }
+        for (int i = offset; i < offset + data.length; i++) {
+            mappedByteBuffer.put(i, data[i - offset]);
+        }
         return true;
     }
 

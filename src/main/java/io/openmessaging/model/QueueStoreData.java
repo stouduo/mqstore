@@ -1,35 +1,35 @@
 package io.openmessaging.model;
 
-import java.nio.ByteBuffer;
+import io.openmessaging.util.ByteUtil;
+
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueStoreData {
     private static AtomicInteger idGene = new AtomicInteger(0);
     private int id;
     private volatile int size;
-    private ByteBuffer dirtyData;
+    private byte[] dirtyData;
 
     public QueueStoreData() {
         this.id = idGene.getAndIncrement();
         this.size = 0;
-        this.dirtyData = ByteBuffer.allocateDirect(0);
+        this.dirtyData = new byte[0];
     }
 
     public int getId() {
         return id;
     }
 
-    public ByteBuffer getDirtyData() {
+    public byte[] getDirtyData() {
+        byte[] dirtyData = this.dirtyData;
+        this.dirtyData = new byte[0];
         return dirtyData;
     }
 
     public QueueStoreData setDirtyData(byte[] dirtyData) {
-        ByteBuffer dirty = ByteBuffer.allocateDirect(this.dirtyData.capacity() + dirtyData.length);
-        dirty.put(this.dirtyData);
-        dirty.put(dirtyData);
-        this.dirtyData.clear();
+        byte[] dirty = new byte[this.dirtyData.length + dirtyData.length];
+        ByteUtil.byteMerger(dirty, this.dirtyData, dirtyData);
         this.dirtyData = dirty;
-        this.dirtyData.position(0);
         return this;
     }
 
