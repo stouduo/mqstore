@@ -117,6 +117,22 @@ public class MappedFile {
         return byteBuffer;
     }
 
+    public synchronized ByteBuffer readByChannel(int offset, int size) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(size);
+        try {
+            fileChannel.read(byteBuffer, offset);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffer.flip();
+        return byteBuffer;
+    }
+
+    public synchronized int readByChannel(int offset) {
+        return readByChannel(offset, 4).getInt();
+    }
+
+
     /**
      * 在文件末尾追加数据
      *

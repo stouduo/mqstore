@@ -2,14 +2,10 @@ package io.openmessaging.service.impl;
 
 import io.openmessaging.service.IndexService;
 
-import java.util.HashMap;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-
 public class HashArrayIndexService implements IndexService<Integer> {
     //    private static int delta = 10;
-    private static int queueCount = 1010000;
-    private long[][] indices = new long[queueCount][200];
+    private static int queueCount = 1000100;
+    private long[][] indices = new long[queueCount][205];
 
 
     @Override
