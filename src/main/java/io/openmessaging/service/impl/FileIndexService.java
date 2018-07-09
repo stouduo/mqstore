@@ -23,6 +23,6 @@ public class FileIndexService implements IndexService<Integer> {
 
     @Override
     public void index(int queue, int size, long logicOffset) {
-        indexFile.appendData((queue * idxCount + size) * INDEX_LENGTH, ByteUtil.long2Bytes(logicOffset));
+        indexFile.appendData((queue * idxCount + size / indexCount - 1) * INDEX_LENGTH, ByteUtil.long2Bytes(logicOffset));
     }
 }
