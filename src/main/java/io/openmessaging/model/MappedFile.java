@@ -66,7 +66,7 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, 2000, TimeUnit.MILLISECONDS);
+        ioWorker.scheduleAtFixedRate(this::flush, 0, fileFlushInterval, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
