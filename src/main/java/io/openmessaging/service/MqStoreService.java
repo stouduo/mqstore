@@ -11,6 +11,8 @@ import java.nio.ByteBuffer;
 import java.text.MessageFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MqStoreService {
@@ -21,22 +23,22 @@ public class MqStoreService {
     private static long logicOffset = 0;
     private static int indexCount = Config.indexCount;
     private static Map<String, QueueStoreData> storeDatas = new ConcurrentHashMap<>();
-    private IndexService indexService;
+//    private IndexService indexService;
 
     public MqStoreService() {
 //        indexService = new HashArrayIndexService();
-        indexService = new FileIndexService();
+//        indexService = new FileIndexService();
     }
 
     private MappedFile create() {
-        return new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize).setFileFlushSize(50 * 1024 * 1024);
+        return new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize, true);
     }
 
     public void put(String queueName, byte[] message) {
         storeDatas.putIfAbsent(queueName, new QueueStoreData());
-        MappedFile writableFile;
         QueueStoreData storeData = storeDatas.get(queueName);
         synchronized (this) {
+            MappedFile writableFile;
             storeData.putDirtyData(message.length).putDirtyData(message);
             storeData.updateSize();
             if (storeData.getSize() % indexCount == 0) {
@@ -48,11 +50,12 @@ public class MqStoreService {
                 }
                 writableFile = storeFiles.get(storeFiles.size() - 1);
                 if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
+                    writableFile.clean();
                     writableFile = create();
                     storeFiles.add(writableFile);
                     logicOffset += storeFileSize - fileOffset;
                 }
-                indexService.index(storeData.getId(), storeData.getSize(), logicOffset);
+                storeData.index(storeData.getSize(), logicOffset);
                 writableFile.appendData(dirtyData);
                 logicOffset += dirtyDataLen;
             }
@@ -62,7 +65,7 @@ public class MqStoreService {
     public List<byte[]> get(String queueName, long startIndex, int num) {
         LinkedList<byte[]> msgs = new LinkedList<>();
         QueueStoreData storeData = storeDatas.get(queueName);
-        long[] startOffsets = getStartOffset(storeData.getId(), startIndex);
+        long[] startOffsets = getStartOffset(storeData, startIndex);
         long startOffset = startOffsets[0];
         int i = (int) startIndex / indexCount * indexCount, msgLen;
         for (; i < startIndex; i++) {
@@ -92,12 +95,12 @@ public class MqStoreService {
         return msgs;
     }
 
-    private long[] getStartOffset(int queue, long startIndex) {
+    private long[] getStartOffset(QueueStoreData storeData, long startIndex) {
         int index = (int) startIndex / indexCount;
         if (startIndex % indexCount == 0) {
-            return new long[]{indexService.query(queue, index)};
+            return new long[]{storeData.query(index)};
         } else
-            return new long[]{indexService.query(queue, index), indexService.query(queue, index + 1)};
+            return new long[]{storeData.query(index), storeData.query(index + 1)};
     }
 
     private byte[] getMsg(long offset, int len) {

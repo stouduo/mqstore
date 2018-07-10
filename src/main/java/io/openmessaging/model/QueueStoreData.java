@@ -1,25 +1,20 @@
 package io.openmessaging.model;
 
-import io.openmessaging.util.ByteUtil;
-
 import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueStoreData {
-    private static AtomicInteger idGene = new AtomicInteger(0);
-    private int id;
     private volatile int size;
     private ByteBuffer dirtyData;
+    private long[] indices;
+    private static int indexCount = 20;
 
     public QueueStoreData() {
-        this.id = idGene.getAndIncrement();
         this.size = 0;
-        this.dirtyData = ByteBuffer.allocate(1536);
+        this.dirtyData = ByteBuffer.allocateDirect(1536);
+        this.indices = new long[100];
     }
 
-    public int getId() {
-        return id;
-    }
 
     public ByteBuffer getDirtyData() {
         return dirtyData;
@@ -45,6 +40,18 @@ public class QueueStoreData {
 
     public void updateSize() {
         size += 1;
+    }
+
+    public void index(int size, long offset) {
+        try {
+            indices[size / indexCount - 1] = offset;
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public long query(int key) {
+        return indices[key];
     }
 
 }

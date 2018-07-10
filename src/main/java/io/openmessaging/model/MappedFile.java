@@ -1,14 +1,18 @@
 package io.openmessaging.model;
 
 import io.openmessaging.config.Config;
+import sun.misc.Cleaner;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.RandomAccessFile;
+import java.lang.reflect.Method;
 import java.nio.ByteBuffer;
 import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.nio.channels.FileLock;
+import java.security.AccessController;
+import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.*;
@@ -40,24 +44,28 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
-    private static ScheduledExecutorService ioWorker = Executors.newScheduledThreadPool(1, r -> {
-        Thread thread = new Thread(r);
-        thread.setName("flush-ioWorker");
-        thread.setDaemon(true);
-        return thread;
-    });
+    private ExecutorService ioWorker;
+    private boolean flushStop = false;
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
         return this;
     }
 
-    public MappedFile(String fileName, String fileDirPath, int fileSize) {
+    public MappedFile(String fileName, String fileDirPath, int fileSize, boolean async) {
         this.fileName = fileName;
         this.fileDirPath = fileDirPath;
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
+        if (async) {
+            this.ioWorker = Executors.newFixedThreadPool(1, (r) -> {
+                Thread thread = new Thread(r);
+                thread.setDaemon(true);
+                return thread;
+            });
+            ioWorker.execute(this::flush);
+        }
         try {
             file.delete();
             file.createNewFile();
@@ -66,15 +74,21 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, fileFlushInterval, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
 //        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
-        if (writeSize.get() - lastFlushFileSize != 0) {
-            mappedByteBuffer.force();
-            lastFlushFileSize = writeSize.get();
-            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+        while (!flushStop) {
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
+            }
+            if (writeSize.get() - lastFlushFileSize != 0) {
+                mappedByteBuffer.force();
+                lastFlushFileSize = writeSize.get();
+                System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+            }
         }
 //        }
     }
@@ -109,6 +123,7 @@ public class MappedFile {
 
 
     public synchronized ByteBuffer read(int offset, int size) {
+        if (!boundSuccess) boundChannelToByteBuffer();
         int position = mappedByteBuffer.position();
         mappedByteBuffer.position(offset);
         ByteBuffer byteBuffer = mappedByteBuffer.slice();
@@ -227,11 +242,29 @@ public class MappedFile {
         return this;
     }
 
+    public void clean() {
+        this.flushStop = true;
+        final Object buffer = mappedByteBuffer;
+        AccessController.doPrivileged((PrivilegedAction) () -> {
+            try {
+                Method getCleanerMethod = buffer.getClass().getMethod("cleaner", new Class[0]);
+                getCleanerMethod.setAccessible(true);
+                Cleaner cleaner = (Cleaner) getCleanerMethod.invoke(buffer, new Object[0]);
+                cleaner.clean();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        });
+    }
+
     public int getInt(int offset) {
+        if (!boundSuccess) boundChannelToByteBuffer();
         return mappedByteBuffer.getInt(offset);
     }
 
     public long getLong(int offset) {
+        if (!boundSuccess) boundChannelToByteBuffer();
         return mappedByteBuffer.getLong(offset);
     }
 
@@ -266,5 +299,15 @@ public class MappedFile {
     public MappedFile setFileFlushInterval(int fileFlushInterval) {
         this.fileFlushInterval = fileFlushInterval;
         return this;
+    }
+
+    public void appendDataByChannel(int offset, ByteBuffer byteBuffer) {
+        byteBuffer.flip();
+        try {
+            fileChannel.write(byteBuffer, offset);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffer.clear();
     }
 }
