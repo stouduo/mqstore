@@ -99,8 +99,9 @@ public class MqStoreService {
         int index = (int) startIndex / indexCount;
         if (startIndex % indexCount == 0) {
             return new long[]{storeData.query(index)};
-        } else
+        } else {
             return new long[]{storeData.query(index), storeData.query(index + 1)};
+        }
     }
 
     private byte[] getMsg(long offset, int len) {

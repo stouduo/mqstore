@@ -16,6 +16,7 @@ import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Date;
 import java.util.concurrent.*;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
 
 public class MappedFile {
@@ -45,7 +46,7 @@ public class MappedFile {
 
     private AtomicLong writeSize = new AtomicLong(0);
     private ExecutorService ioWorker;
-    private boolean flushStop = false;
+    private AtomicBoolean flushStop = new AtomicBoolean(false);
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -78,16 +79,16 @@ public class MappedFile {
 
     private void flush() {
 //        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
-        while (!flushStop) {
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        while (!flushStop.get()) {
             if (writeSize.get() - lastFlushFileSize != 0) {
                 mappedByteBuffer.force();
                 lastFlushFileSize = writeSize.get();
                 System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+            }
+            try {
+                Thread.sleep(500);
+            } catch (InterruptedException e) {
+                e.printStackTrace();
             }
         }
 //        }
@@ -243,7 +244,7 @@ public class MappedFile {
     }
 
     public void clean() {
-        this.flushStop = true;
+        flushStop.compareAndSet(false, true);
         final Object buffer = mappedByteBuffer;
         AccessController.doPrivileged((PrivilegedAction) () -> {
             try {

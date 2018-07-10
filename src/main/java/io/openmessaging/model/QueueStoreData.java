@@ -7,12 +7,12 @@ public class QueueStoreData {
     private volatile int size;
     private ByteBuffer dirtyData;
     private long[] indices;
-    private static int indexCount = 20;
+    private static int indexCount = 10;
 
     public QueueStoreData() {
         this.size = 0;
-        this.dirtyData = ByteBuffer.allocateDirect(1536);
-        this.indices = new long[100];
+        this.dirtyData = ByteBuffer.allocateDirect(512);
+        this.indices = new long[200];
     }
 
 
