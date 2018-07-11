@@ -34,31 +34,31 @@ public class MqStoreService {
         return new MappedFile(MessageFormat.format("mqstore_{0}.data", fileNameIndex.getAndIncrement()), filePath, storeFileSize, true);
     }
 
-    public void put(String queueName, byte[] message) {
-        storeDatas.putIfAbsent(queueName, new QueueStoreData());
+    public synchronized void put(String queueName, byte[] message) {
         QueueStoreData storeData = storeDatas.get(queueName);
-        synchronized (this) {
-            MappedFile writableFile;
-            storeData.putDirtyData(message.length).putDirtyData(message);
-            storeData.updateSize();
-            if (storeData.getSize() % indexCount == 0) {
-                long fileOffset = logicOffset % storeFileSize;
-                ByteBuffer dirtyData = storeData.getDirtyData();
-                int dirtyDataLen = dirtyData.position();
-                if (fileOffset == 0) {
-                    storeFiles.add(create());
-                }
-                writableFile = storeFiles.get(storeFiles.size() - 1);
-                if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
-                    writableFile.clean();
-                    writableFile = create();
-                    storeFiles.add(writableFile);
-                    logicOffset += storeFileSize - fileOffset;
-                }
-                storeData.index(storeData.getSize(), logicOffset);
-                writableFile.appendData(dirtyData);
-                logicOffset += dirtyDataLen;
+        if (storeData == null) {
+            storeDatas.put(queueName, new QueueStoreData());
+            storeData = storeDatas.get(queueName);
+        }
+        MappedFile writableFile;
+        storeData.putDirtyData(message.length).putDirtyData(message);
+        storeData.updateSize();
+        if (storeData.getSize() % indexCount == 0) {
+            long fileOffset = logicOffset % storeFileSize;
+            ByteBuffer dirtyData = storeData.getDirtyData();
+            int dirtyDataLen = dirtyData.position();
+            if (fileOffset == 0) {
+                storeFiles.add(create());
             }
+            writableFile = storeFiles.get(storeFiles.size() - 1);
+            if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
+                writableFile = create();
+                storeFiles.add(writableFile);
+                logicOffset += storeFileSize - fileOffset;
+            }
+            storeData.index(storeData.getSize(), logicOffset);
+            writableFile.appendData(dirtyData);
+            logicOffset += dirtyDataLen;
         }
     }
 

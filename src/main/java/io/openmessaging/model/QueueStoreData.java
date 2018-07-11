@@ -11,7 +11,7 @@ public class QueueStoreData {
 
     public QueueStoreData() {
         this.size = 0;
-        this.dirtyData = ByteBuffer.allocateDirect(512);
+        this.dirtyData = ByteBuffer.allocateDirect(1024);
         this.indices = new long[200];
     }
 
@@ -43,11 +43,7 @@ public class QueueStoreData {
     }
 
     public void index(int size, long offset) {
-        try {
-            indices[size / indexCount - 1] = offset;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
+        indices[size / indexCount - 1] = offset;
     }
 
     public long query(int key) {
