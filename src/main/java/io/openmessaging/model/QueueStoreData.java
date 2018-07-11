@@ -1,7 +1,8 @@
 package io.openmessaging.model;
 
+import sun.nio.ch.DirectBuffer;
+
 import java.nio.ByteBuffer;
-import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueStoreData {
     private volatile int size;
@@ -15,6 +16,9 @@ public class QueueStoreData {
         this.indices = new long[200];
     }
 
+    public void clear() {
+        ((DirectBuffer) dirtyData).cleaner().clean();
+    }
 
     public ByteBuffer getDirtyData() {
         return dirtyData;
@@ -38,8 +42,8 @@ public class QueueStoreData {
         this.size = size;
     }
 
-    public void updateSize() {
-        size += 1;
+    public int updateSize() {
+        return ++size;
     }
 
     public void index(int size, long offset) {

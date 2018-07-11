@@ -3,16 +3,14 @@ package io.openmessaging.service;
 import io.openmessaging.config.Config;
 import io.openmessaging.model.MappedFile;
 import io.openmessaging.model.QueueStoreData;
-import io.openmessaging.service.impl.FileIndexService;
-import io.openmessaging.service.impl.HashArrayIndexService;
-import io.openmessaging.util.ByteUtil;
 
 import java.nio.ByteBuffer;
 import java.text.MessageFormat;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class MqStoreService {
@@ -23,11 +21,24 @@ public class MqStoreService {
     private static long logicOffset = 0;
     private static int indexCount = Config.indexCount;
     private static Map<String, QueueStoreData> storeDatas = new ConcurrentHashMap<>();
+    private AtomicBoolean clearDirectBuff = new AtomicBoolean(false);
 //    private IndexService indexService;
 
     public MqStoreService() {
-//        indexService = new HashArrayIndexService();
-//        indexService = new FileIndexService();
+        Executors.newFixedThreadPool(1, r -> {
+            Thread thread = new Thread(r);
+            thread.setName("clear-directbuff");
+            thread.setDaemon(true);
+            return thread;
+        }).execute(() -> {
+            while (true) {
+                if (clearDirectBuff.get()) {
+                    storeDatas.forEach((k, v) -> v.clear());
+                    System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": clear directbuff success");
+                    break;
+                }
+            }
+        });
     }
 
     private MappedFile create() {
@@ -36,33 +47,40 @@ public class MqStoreService {
 
     public synchronized void put(String queueName, byte[] message) {
         QueueStoreData storeData = storeDatas.get(queueName);
-        if (storeData == null) {
-            storeDatas.put(queueName, new QueueStoreData());
-            storeData = storeDatas.get(queueName);
-        }
-        MappedFile writableFile;
-        storeData.putDirtyData(message.length).putDirtyData(message);
-        storeData.updateSize();
-        if (storeData.getSize() % indexCount == 0) {
-            long fileOffset = logicOffset % storeFileSize;
-            ByteBuffer dirtyData = storeData.getDirtyData();
-            int dirtyDataLen = dirtyData.position();
-            if (fileOffset == 0) {
-                storeFiles.add(create());
+        MappedFile writableFile = null;
+        int size, fileOffset = 0;
+        ByteBuffer dirtyData = null;
+        synchronized (this) {
+            if (storeData == null) {
+                storeDatas.put(queueName, new QueueStoreData());
+                storeData = storeDatas.get(queueName);
             }
-            writableFile = storeFiles.get(storeFiles.size() - 1);
-            if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
-                writableFile = create();
-                storeFiles.add(writableFile);
-                logicOffset += storeFileSize - fileOffset;
+            storeData.putDirtyData(message.length).putDirtyData(message);
+            size = storeData.updateSize();
+            if (size % indexCount == 0) {
+                fileOffset = (int) logicOffset % storeFileSize;
+                dirtyData = storeData.getDirtyData();
+                int dirtyDataLen = dirtyData.position();
+                if (fileOffset == 0) {
+                    storeFiles.add(create());
+                }
+                writableFile = storeFiles.get(storeFiles.size() - 1);
+                if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
+                    writableFile = create();
+                    storeFiles.add(writableFile);
+                    logicOffset += storeFileSize - fileOffset;
+                    fileOffset = (int) logicOffset % storeFileSize;
+                }
+                storeData.index(storeData.getSize(), logicOffset);
+                logicOffset += dirtyDataLen;
             }
-            storeData.index(storeData.getSize(), logicOffset);
-            writableFile.appendData(dirtyData);
-            logicOffset += dirtyDataLen;
         }
+        if (size % indexCount == 0)
+            writableFile.appendData(fileOffset, dirtyData);
     }
 
     public List<byte[]> get(String queueName, long startIndex, int num) {
+        if (!clearDirectBuff.get()) clearDirectBuff.compareAndSet(false, true);
         LinkedList<byte[]> msgs = new LinkedList<>();
         QueueStoreData storeData = storeDatas.get(queueName);
         long[] startOffsets = getStartOffset(storeData, startIndex);

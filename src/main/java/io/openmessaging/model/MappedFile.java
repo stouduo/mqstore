@@ -15,6 +15,7 @@ import java.security.AccessController;
 import java.security.PrivilegedAction;
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.Random;
 import java.util.concurrent.*;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicLong;
@@ -65,7 +66,7 @@ public class MappedFile {
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
         if (async) {
-            ioWorker.scheduleAtFixedRate(this::flush, 0, fileFlushInterval, TimeUnit.MILLISECONDS);
+            ioWorker.scheduleAtFixedRate(this::flush, new Random().nextInt(1000), fileFlushInterval, TimeUnit.MILLISECONDS);
         }
         try {
             file.delete();
@@ -188,22 +189,9 @@ public class MappedFile {
         return true;
     }
 
-    public boolean appendData(int offset, byte[] data) {
-        writeSize.getAndAdd(data.length);
-        if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
-            writeSize.getAndAdd(-data.length);
-            System.out.println("File="
-                    + file.toURI().toString()
-                    + " is written full.");
-            System.out.println("already write data length:"
-                    + writeSize
-                    + ", max file size=" + fileSize);
-            return false;
-        }
-        for (int i = offset; i < offset + data.length; i++) {
-            mappedByteBuffer.put(i, data[i - offset]);
-        }
-        return true;
+    public void appendData(int offset, ByteBuffer data) {
+        mappedByteBuffer.position(offset);
+        appendData(data);
     }
 
     public MappedFile writeInt(int offset, int value) {
