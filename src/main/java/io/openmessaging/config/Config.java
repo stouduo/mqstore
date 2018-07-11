@@ -32,7 +32,7 @@ public class Config {
     public static int mqStoreFileSize = Integer.parseInt(getOrDefaultValue(MQ_STORE_MAPPED_FILE_SIZE, defaultStoreSize + ""));
     public static int fileFlushInterval = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_INTERVAL, defaultFlushInterval + ""));
     public static int fileFlushSize = Integer.parseInt(getOrDefaultValue(MAPPED_FILE_FLUSH_DISK_SIZE, defaultFlushSize + ""));
-    public static int indexCount = Integer.parseInt(getOrDefaultValue(INDEX_COUNT, defaultIndexCount + ""));
+    public static int queueMsgCountPerFile = Integer.parseInt(getOrDefaultValue(INDEX_COUNT, defaultIndexCount + ""));
 
     public static void main(String[] args) {
         System.out.println(configs.toString());
