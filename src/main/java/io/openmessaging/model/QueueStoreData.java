@@ -1,57 +1,30 @@
 package io.openmessaging.model;
 
-import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueStoreData {
-    private volatile int size;
-    private ByteBuffer dirtyData;
-    private long[] indices;
-    private static int indexCount = 10;
+    private volatile int msgIndex;
+    private static AtomicInteger idGene = new AtomicInteger(0);
+    private int id;
 
     public QueueStoreData() {
-        this.size = 0;
-        this.dirtyData = ByteBuffer.allocateDirect(512);
-        this.indices = new long[200];
+        this.msgIndex = 0;
+        this.id = idGene.getAndIncrement();
     }
 
-
-    public ByteBuffer getDirtyData() {
-        return dirtyData;
+    public int getId() {
+        return id;
     }
 
-    public QueueStoreData putDirtyData(int dataLen) {
-        this.dirtyData.putInt(dataLen);
-        return this;
+    public int getMsgIndex() {
+        return msgIndex;
     }
 
-    public QueueStoreData putDirtyData(byte[] dirtyData) {
-        this.dirtyData.put(dirtyData);
-        return this;
+    public void setMsgIndex(int msgIndex) {
+        this.msgIndex = msgIndex;
     }
 
-    public int getSize() {
-        return size;
+    public int updateMsgIndex() {
+        return msgIndex++;
     }
-
-    public void setSize(int size) {
-        this.size = size;
-    }
-
-    public void updateSize() {
-        size += 1;
-    }
-
-    public void index(int size, long offset) {
-        try {
-            indices[size / indexCount - 1] = offset;
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
-
-    public long query(int key) {
-        return indices[key];
-    }
-
 }

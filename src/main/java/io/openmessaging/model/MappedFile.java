@@ -2,6 +2,7 @@ package io.openmessaging.model;
 
 import io.openmessaging.config.Config;
 import sun.misc.Cleaner;
+import sun.misc.Unsafe;
 
 import java.io.File;
 import java.io.IOException;
@@ -46,7 +47,6 @@ public class MappedFile {
 
     private AtomicLong writeSize = new AtomicLong(0);
     private ExecutorService ioWorker;
-    private AtomicBoolean flushStop = new AtomicBoolean(false);
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -59,6 +59,7 @@ public class MappedFile {
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
+        this.fileSize = fileSize;
         if (async) {
             this.ioWorker = Executors.newFixedThreadPool(1, (r) -> {
                 Thread thread = new Thread(r);
@@ -70,28 +71,36 @@ public class MappedFile {
         try {
             file.delete();
             file.createNewFile();
+            try {
+                this.fileChannel = new RandomAccessFile(file, "rw").getChannel();
+            } catch (Exception e) {
+                e.printStackTrace();
+                this.boundSuccess = false;
+            }
+
         } catch (IOException e) {
             e.printStackTrace();
         }
-        this.fileSize = fileSize;
         boundChannelToByteBuffer();
     }
 
     private void flush() {
-//        if (writeSize.get() - lastFlushFileSize >= fileFlushSize) {
-        while (!flushStop.get()) {
+        while (true) {
+            if (lastFlushFileSize == fileSize) {
+                clean();
+                break;
+            }
             if (writeSize.get() - lastFlushFileSize != 0) {
                 mappedByteBuffer.force();
                 lastFlushFileSize = writeSize.get();
                 System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
             }
             try {
-                Thread.sleep(500);
+                Thread.sleep(fileFlushInterval);
             } catch (InterruptedException e) {
                 e.printStackTrace();
             }
         }
-//        }
     }
 
     /**
@@ -100,15 +109,6 @@ public class MappedFile {
      * @return
      */
     public synchronized boolean boundChannelToByteBuffer() {
-        try {
-            RandomAccessFile raf = new RandomAccessFile(file, "rw");
-            this.fileChannel = raf.getChannel();
-        } catch (Exception e) {
-            e.printStackTrace();
-            this.boundSuccess = false;
-            return false;
-        }
-
         try {
             this.mappedByteBuffer = this.fileChannel
                     .map(FileChannel.MapMode.READ_WRITE, 0, fileSize);
@@ -197,7 +197,7 @@ public class MappedFile {
         return true;
     }
 
-    public boolean appendData(int offset, byte[] data) {
+    public MappedFile appendData(int offset, byte[] data) {
         writeSize.getAndAdd(data.length);
         if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
             writeSize.getAndAdd(-data.length);
@@ -207,12 +207,12 @@ public class MappedFile {
             System.out.println("already write data length:"
                     + writeSize
                     + ", max file size=" + fileSize);
-            return false;
+            return this;
         }
         for (int i = offset; i < offset + data.length; i++) {
             mappedByteBuffer.put(i, data[i - offset]);
         }
-        return true;
+        return this;
     }
 
     public MappedFile writeInt(int offset, int value) {
@@ -244,14 +244,14 @@ public class MappedFile {
     }
 
     public void clean() {
-        flushStop.compareAndSet(false, true);
-        final Object buffer = mappedByteBuffer;
         AccessController.doPrivileged((PrivilegedAction) () -> {
             try {
-                Method getCleanerMethod = buffer.getClass().getMethod("cleaner", new Class[0]);
+                Method getCleanerMethod = mappedByteBuffer.getClass().getMethod("cleaner", new Class[0]);
                 getCleanerMethod.setAccessible(true);
-                Cleaner cleaner = (Cleaner) getCleanerMethod.invoke(buffer, new Object[0]);
+                Cleaner cleaner = (Cleaner)
+                        getCleanerMethod.invoke(mappedByteBuffer, new Object[0]);
                 cleaner.clean();
+                System.out.println("clean bytebuff success");
             } catch (Exception e) {
                 e.printStackTrace();
             }
