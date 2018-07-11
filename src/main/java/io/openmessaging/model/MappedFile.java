@@ -32,6 +32,7 @@ public class MappedFile {
     private File file;
 
     private MappedByteBuffer mappedByteBuffer;
+    private long address=0;
     private FileChannel fileChannel;
     private boolean boundSuccess = false;
     private int fileSize;
@@ -46,7 +47,12 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
-    private ExecutorService ioWorker;
+    private static ScheduledExecutorService sioWorker = Executors.newSingleThreadScheduledExecutor((r) -> {
+        Thread thread = new Thread(r);
+        thread.setName("flush-to-disk");
+        thread.setDaemon(true);
+        return thread;
+    });
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -61,12 +67,13 @@ public class MappedFile {
         this.file = new File(fileDirPath + File.separator + fileName);
         this.fileSize = fileSize;
         if (async) {
-            this.ioWorker = Executors.newFixedThreadPool(1, (r) -> {
-                Thread thread = new Thread(r);
-                thread.setDaemon(true);
-                return thread;
-            });
-            ioWorker.execute(this::flush);
+            sioWorker.scheduleAtFixedRate(this::flush, 0, 500, TimeUnit.MILLISECONDS);
+//            this.ioWorker = Executors.newFixedThreadPool(1, (r) -> {
+//                Thread thread = new Thread(r);
+//                thread.setDaemon(true);
+//                return thread;
+//            });
+//            ioWorker.execute(this::flush);
         }
         try {
             file.delete();
@@ -85,23 +92,30 @@ public class MappedFile {
     }
 
     private void flush() {
-        while (true) {
-            if (lastFlushFileSize == fileSize) {
-                clean();
-                break;
-            }
-            if (writeSize.get() - lastFlushFileSize != 0) {
-                mappedByteBuffer.force();
-                lastFlushFileSize = writeSize.get();
-                System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
-            }
-            try {
-                Thread.sleep(fileFlushInterval);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
+        if (writeSize.get() - lastFlushFileSize != 0) {
+            mappedByteBuffer.force();
+            lastFlushFileSize = writeSize.get();
+            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
         }
     }
+//    private void flush() {
+//        while (true) {
+//            if (lastFlushFileSize == fileSize) {
+//                clean();
+//                break;
+//            }
+//            if (writeSize.get() - lastFlushFileSize != 0) {
+//                mappedByteBuffer.force();
+//                lastFlushFileSize = writeSize.get();
+//                System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+//            }
+//            try {
+//                Thread.sleep(fileFlushInterval);
+//            } catch (InterruptedException e) {
+//                e.printStackTrace();
+//            }
+//        }
+//    }
 
     /**
      * 内存映照文件绑定

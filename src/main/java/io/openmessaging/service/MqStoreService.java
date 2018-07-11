@@ -15,7 +15,7 @@ public class MqStoreService {
     private static AtomicInteger fileNameIndex = new AtomicInteger(0);
     private static String filePath = Config.rootPath + Config.mqStorePath;
     private static int queueMsgCountPerFile = Config.queueMsgCountPerFile;
-    private static int msgSize = 64;
+    private static int msgSize = 32;
     private static int storeFileSize = 1000000 * queueMsgCountPerFile * msgSize;
     private static Map<String, QueueStoreData> storeDatas = new ConcurrentHashMap<>();
 
@@ -45,8 +45,8 @@ public class MqStoreService {
         MappedFile writableFile = storeFiles.get(fileIndex);
         byte[] fill = new byte[msgSize - 4 - message.length];
         writableFile.writeInt(msgPyOffset, message.length)
-                .appendData(msgPyOffset + 4, message)
-                .appendData(msgPyOffset + 4 + message.length, fill);
+                .appendData(msgPyOffset + 4, message);
+//                .appendData(msgPyOffset + 4 + message.length, fill);
     }
 
     public List<byte[]> get(String queueName, long startIndex, int num) {
@@ -63,14 +63,14 @@ public class MqStoreService {
                 startOffset = storeData.getId() * queueMsgCountPerFile * msgSize;
             }
             realOffset = (startOffset + i * msgSize) % storeFileSize;
-            msgs.add(getMsg(file, realOffset + 4, file.readByChannel(realOffset)));
+            msgs.add(getMsg(file, realOffset + 4, file.getInt(realOffset)));
         }
         return msgs;
     }
 
     private byte[] getMsg(MappedFile file, long offset, int len) {
         byte[] msg = new byte[len];
-        byteBuff2bytes(file.readByChannel((int) (offset), len), 0, msg);
+        byteBuff2bytes(file.read((int) (offset), len), 0, msg);
         return msg;
     }
 
