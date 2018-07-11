@@ -47,17 +47,17 @@ public class MqStoreService {
 
     public synchronized void put(String queueName, byte[] message) {
         QueueStoreData storeData = storeDatas.get(queueName);
-        MappedFile writableFile = null;
-        int size, fileOffset = 0;
-        ByteBuffer dirtyData = null;
+        MappedFile writableFile;
+        int fileOffset;
+        ByteBuffer dirtyData;
         synchronized (this) {
             if (storeData == null) {
                 storeDatas.put(queueName, new QueueStoreData());
                 storeData = storeDatas.get(queueName);
             }
             storeData.putDirtyData(message.length).putDirtyData(message);
-            size = storeData.updateSize();
-            if (size % indexCount == 0) {
+            storeData.updateSize();
+            if (storeData.getSize() % indexCount == 0) {
                 fileOffset = (int) logicOffset % storeFileSize;
                 dirtyData = storeData.getDirtyData();
                 int dirtyDataLen = dirtyData.position();
@@ -69,14 +69,12 @@ public class MqStoreService {
                     writableFile = create();
                     storeFiles.add(writableFile);
                     logicOffset += storeFileSize - fileOffset;
-                    fileOffset = (int) logicOffset % storeFileSize;
                 }
                 storeData.index(storeData.getSize(), logicOffset);
+                writableFile.appendData(dirtyData);
                 logicOffset += dirtyDataLen;
             }
         }
-        if (size % indexCount == 0)
-            writableFile.appendData(fileOffset, dirtyData);
     }
 
     public List<byte[]> get(String queueName, long startIndex, int num) {
