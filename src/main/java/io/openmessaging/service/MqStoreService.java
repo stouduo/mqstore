@@ -24,7 +24,7 @@ public class MqStoreService implements IndexService<Integer> {
 
     public MqStoreService() {
         createFiles();
-        indexService = new HashArrayIndexService();
+//        indexService = new HashArrayIndexService();
     }
 
     private void createFiles() {
@@ -34,38 +34,43 @@ public class MqStoreService implements IndexService<Integer> {
     }
 
     public void put(String queueName, byte[] message) {
-        metaDatas.putIfAbsent(queueName, new QueueMetaData(blockCountPerFile, blockSize));
-        QueueMetaData queueMetaData = metaDatas.get(queueName);
-        MappedFile writableFile = storeFiles.get(queueMetaData.getFileIndex());
+        MappedFile writableFile;
         int endOffset;
+        ByteBuffer dirtyData;
         synchronized (this) {
+            QueueMetaData queueMetaData = metaDatas.get(queueName);
+            if (queueMetaData == null) {
+                metaDatas.putIfAbsent(queueName, new QueueMetaData(blockCountPerFile, blockSize));
+                queueMetaData = metaDatas.get(queueName);
+            }
+            writableFile = storeFiles.get(queueMetaData.getFileIndex());
             endOffset = (int) queueMetaData.getEndOffset();
             queueMetaData.setStartOffset(queueMetaData.getEndOffset());
-            if (queueMetaData.getMsgCount() % indexCount == 0) {
-                indexService.index(queueMetaData);
-            }
+//            if (queueMetaData.getMsgCount() % indexCount == 0) {
+//                indexService.index(queueMetaData);
+//            }
             queueMetaData.updateMsgCount();
-            queueMetaData.updateEndOffset(4 + message.length);
+            queueMetaData.updateEndOffset(64);
+            queueMetaData.setDirtyData(message.length, message, 64 - message.length - 4);
+            dirtyData = queueMetaData.getDirtyData();
         }
-        writableFile.writeInt(endOffset, message.length);
-        writableFile.appendData(endOffset + 4, message);
+        if (!dirtyData.hasRemaining()) {
+            writableFile.appendDataByChannel(endOffset, dirtyData);
+        }
+//        writableFile.writeInt(endOffset, message.length);
+//        writableFile.appendData(endOffset + 4, message);
     }
 
     public List<byte[]> get(String queueName, long readIndex, int num) {
         LinkedList<byte[]> msgs = new LinkedList<>();
         QueueMetaData queueMetaData = metaDatas.get(queueName);
         int endIndex = Math.min((int) readIndex + num, queueMetaData.getMsgCount());
-        queueMetaData = getNearestOffset((int) readIndex, queueMetaData);
         MappedFile file = storeFiles.get(queueMetaData.getFileIndex());
-        long readOffset = queueMetaData.getStartOffset();
-        int i, msgLen;
-        for (i = queueMetaData.getMsgCount(); i < readIndex; i++) {
-            readOffset += 4 + file.getInt((int) readOffset);
-        }
-        for (; i < endIndex; i++) {
-            msgLen = file.getInt((int) readOffset);
-            msgs.add(getMsg(file, readOffset + 4, msgLen));
-            readOffset += 4 + msgLen;
+        int startOffset = (int) queueMetaData.getStartOffset();
+        int readOffset;
+        for (int i = (int) readIndex; i < endIndex; i++) {
+            readOffset = startOffset + i * 64;
+            msgs.add(getMsg(file, readOffset + 4, file.getIntByChannel(readOffset)));
         }
         return msgs;
     }

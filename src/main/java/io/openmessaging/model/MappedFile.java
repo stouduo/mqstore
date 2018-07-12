@@ -65,8 +65,8 @@ public class MappedFile {
             e.printStackTrace();
         }
         this.fileSize = fileSize;
-        boundChannelToByteBuffer();
-        ioWorker.scheduleAtFixedRate(this::flush, 0, 2000, TimeUnit.MILLISECONDS);
+//        boundChannelToByteBuffer();
+//        ioWorker.scheduleAtFixedRate(this::flush, 0, 2000, TimeUnit.MILLISECONDS);
     }
 
     private void flush() {
@@ -94,14 +94,14 @@ public class MappedFile {
             return false;
         }
 
-        try {
-            this.mappedByteBuffer = this.fileChannel
-                    .map(FileChannel.MapMode.READ_WRITE, 0, fileSize);
-        } catch (IOException e) {
-            e.printStackTrace();
-            this.boundSuccess = false;
-            return false;
-        }
+//        try {
+//            this.mappedByteBuffer = this.fileChannel
+//                    .map(FileChannel.MapMode.READ_WRITE, 0, fileSize);
+//        } catch (IOException e) {
+//            e.printStackTrace();
+//            this.boundSuccess = false;
+//            return false;
+//        }
 
         this.boundSuccess = true;
         return true;
@@ -126,6 +126,17 @@ public class MappedFile {
      */
     public boolean appendData(byte[] data) {
         return appendData(data, 0, data.length);
+    }
+
+    public void appendDataByChannel(int position, ByteBuffer byteBuffer) {
+        if(!boundSuccess) boundChannelToByteBuffer();
+        byteBuffer.flip();
+        try {
+            fileChannel.write(byteBuffer, position);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffer.clear();
     }
 
     public boolean appendData(int offset, byte[] data) {
@@ -195,6 +206,16 @@ public class MappedFile {
 
     public int getInt(int offset) {
         return mappedByteBuffer.getInt(offset);
+    }
+
+    public int getIntByChannel(int offset) {
+        ByteBuffer byteBuffer = ByteBuffer.allocate(4);
+        try {
+            fileChannel.read(byteBuffer, offset);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        return byteBuffer.getInt();
     }
 
     public long getLong(int offset) {

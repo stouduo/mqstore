@@ -1,5 +1,6 @@
 package io.openmessaging.model;
 
+import java.nio.ByteBuffer;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public class QueueMetaData {
@@ -9,6 +10,7 @@ public class QueueMetaData {
     private volatile long endOffset = 0;
     private volatile int msgCount = 0;
     private int fileIndex;
+    private ByteBuffer dirtyData;
 
     public QueueMetaData() {
     }
@@ -18,6 +20,18 @@ public class QueueMetaData {
         this.fileIndex = id / blockCountPerFile;
         this.startOffset = id * blockSize - fileIndex * blockCountPerFile * blockSize;
         this.endOffset = this.startOffset;
+        if (id % 4 == 0)
+            dirtyData = ByteBuffer.allocate(4096);
+        else
+            dirtyData = ByteBuffer.allocateDirect(4096);
+    }
+
+    public ByteBuffer getDirtyData() {
+        return dirtyData;
+    }
+
+    public void setDirtyData(int len, byte[] message, int fillLen) {
+        dirtyData.putInt(len).put(message).position(dirtyData.position() + fillLen);
     }
 
     public int getFileIndex() {
