@@ -3,21 +3,26 @@ package io.openmessaging.model;
 import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
 
 public class QueueStoreData {
-    private volatile int size;
+    private AtomicInteger size;
     private ByteBuffer dirtyData;
     private long[] indices;
-    private static int indexCount = 10;
+    private static int indexCount = 20;
+    private static ByteBuffer buff = ByteBuffer.allocateDirect((int) (1024 * 1024 * 1024 * 1.2));
 
     public QueueStoreData() {
-        this.size = 0;
-        this.dirtyData = ByteBuffer.allocateDirect(1024);
-        this.indices = new long[200];
+        this.size = new AtomicInteger(0);
+        buff.position(size.get() * 1280).limit(1280);
+        this.dirtyData = buff.slice();
+        this.indices = new long[100];
     }
 
     public void clear() {
-        ((DirectBuffer) dirtyData).cleaner().clean();
+//        ((DirectBuffer) dirtyData).cleaner().clean();
+        ((DirectBuffer) buff).cleaner().clean();
     }
 
     public ByteBuffer getDirtyData() {
@@ -26,6 +31,11 @@ public class QueueStoreData {
 
     public QueueStoreData putDirtyData(int dataLen) {
         this.dirtyData.putInt(dataLen);
+        return this;
+    }
+
+    public QueueStoreData putDirtyData(int len, byte[] data, int fillLen) {
+        this.dirtyData.putInt(len).put(data).position(dirtyData.position() + fillLen);
         return this;
     }
 
@@ -40,15 +50,11 @@ public class QueueStoreData {
     }
 
     public int getSize() {
-        return size;
-    }
-
-    public void setSize(int size) {
-        this.size = size;
+        return size.get();
     }
 
     public int updateSize() {
-        return ++size;
+        return size.incrementAndGet();
     }
 
     public void index(int size, long offset) {
