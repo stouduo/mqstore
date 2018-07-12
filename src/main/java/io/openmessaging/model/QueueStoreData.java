@@ -10,19 +10,23 @@ public class QueueStoreData {
     private AtomicInteger size;
     private ByteBuffer dirtyData;
     private long[] indices;
-    private static int indexCount = 20;
-    private static ByteBuffer buff = ByteBuffer.allocateDirect((int) (1024 * 1024 * 1024 * 1.2));
+    private static int indexCount = 64;
+    private static int count = 0;
 
     public QueueStoreData() {
         this.size = new AtomicInteger(0);
-        buff.position(size.get() * 1280).limit(1280);
-        this.dirtyData = buff.slice();
-        this.indices = new long[100];
+        if (count++ % 4 == 0) {
+            this.dirtyData = ByteBuffer.allocate(4096);
+        } else {
+            this.dirtyData = ByteBuffer.allocateDirect(4096);
+        }
+        this.indices = new long[32];
     }
 
     public void clear() {
-//        ((DirectBuffer) dirtyData).cleaner().clean();
-        ((DirectBuffer) buff).cleaner().clean();
+        if (dirtyData instanceof DirectBuffer)
+            ((DirectBuffer) dirtyData).cleaner().clean();
+//        ((DirectBuffer) directBuff).cleaner().clean();
     }
 
     public ByteBuffer getDirtyData() {

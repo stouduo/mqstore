@@ -52,7 +52,11 @@ public class MappedFile {
         thread.setName("flush-to-disk");
         return thread;
     });
-    private AtomicBoolean flushStop = new AtomicBoolean(false);
+    private AtomicBoolean doFlush = new AtomicBoolean(false);
+
+    public void enableFlush() {
+        doFlush.compareAndSet(false, true);
+    }
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -66,7 +70,7 @@ public class MappedFile {
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
         if (async) {
-            ioWorker.scheduleAtFixedRate(this::flush, new Random().nextInt(1000), fileFlushInterval, TimeUnit.MILLISECONDS);
+            ioWorker.scheduleAtFixedRate(this::flush, 0, 10, TimeUnit.MILLISECONDS);
         }
         try {
             file.delete();
@@ -79,9 +83,11 @@ public class MappedFile {
     }
 
     private void flush() {
-        if (writeSize.get() - lastFlushFileSize != 0) {
+        if (doFlush.get()) {
+            doFlush.compareAndSet(true, false);
             mappedByteBuffer.force();
-            lastFlushFileSize = writeSize.get();
+//            clean();
+//            lastFlushFileSize = writeSize.get();
             System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
         }
     }
@@ -152,7 +158,7 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
-    public void appendDataByChannel(ByteBuffer byteBuffer){
+    public void appendDataByChannel(ByteBuffer byteBuffer) {
         byteBuffer.flip();
         try {
             fileChannel.write(byteBuffer);
@@ -233,14 +239,13 @@ public class MappedFile {
     }
 
     public void clean() {
-        flushStop.compareAndSet(false, true);
-        final Object buffer = mappedByteBuffer;
         AccessController.doPrivileged((PrivilegedAction) () -> {
             try {
-                Method getCleanerMethod = buffer.getClass().getMethod("cleaner", new Class[0]);
+                Method getCleanerMethod = mappedByteBuffer.getClass().getMethod("cleaner", new Class[0]);
                 getCleanerMethod.setAccessible(true);
-                Cleaner cleaner = (Cleaner) getCleanerMethod.invoke(buffer, new Object[0]);
+                Cleaner cleaner = (Cleaner) getCleanerMethod.invoke(mappedByteBuffer, new Object[0]);
                 cleaner.clean();
+                System.out.println("clean bytebuff success");
             } catch (Exception e) {
                 e.printStackTrace();
             }
