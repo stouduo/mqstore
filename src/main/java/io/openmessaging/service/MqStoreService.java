@@ -103,9 +103,11 @@ public class MqStoreService {
     }
 
     public List<byte[]> get(String queueName, long startIndex, int num) {
-        if (!clearDirectBuff.get()) {
-            flushLastBlock();
-            clearDirectBuff.compareAndSet(false, true);
+        synchronized (this) {
+            if (!clearDirectBuff.get()) {
+                flushLastBlock();
+                clearDirectBuff.compareAndSet(false, true);
+            }
         }
         LinkedList<byte[]> msgs = new LinkedList<>();
         QueueStoreData storeData = storeDatas.get(queueName);
