@@ -34,6 +34,11 @@ public class QueueStoreData {
         return this;
     }
 
+    public QueueStoreData fillDirtyData(int len) {
+        dirtyData.position(dirtyData.position() + len);
+        return this;
+    }
+
     public int getSize() {
         return size;
     }

@@ -152,6 +152,16 @@ public class MappedFile {
         return appendData(data, 0, data.length);
     }
 
+    public void appendDataByChannel(ByteBuffer byteBuffer){
+        byteBuffer.flip();
+        try {
+            fileChannel.write(byteBuffer);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+        byteBuffer.clear();
+    }
+
     public boolean appendData(ByteBuffer byteBuffer) {
         writeSize.getAndAdd(byteBuffer.position());
         if (writeSize.get() > fileSize) {   // 如果写入data会超出文件大小限制，不写入
