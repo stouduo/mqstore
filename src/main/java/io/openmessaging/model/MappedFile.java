@@ -296,7 +296,7 @@ public class MappedFile {
         return this;
     }
 
-    public void appendDataByChannel(int offset, ByteBuffer byteBuffer) {
+    public void appendDataByChannel(long offset, ByteBuffer byteBuffer) {
         byteBuffer.flip();
         try {
             fileChannel.write(byteBuffer, offset);
