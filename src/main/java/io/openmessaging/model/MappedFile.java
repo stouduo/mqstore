@@ -46,6 +46,12 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
+    private static ExecutorService ioWorkers = Executors.newFixedThreadPool(2, (r) -> {
+        Thread thread = new Thread(r);
+        thread.setDaemon(true);
+        thread.setName("flush-to-disk");
+        return thread;
+    });
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -67,12 +73,7 @@ public class MappedFile {
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
         if (async) {
-            Executors.newFixedThreadPool(1, (r) -> {
-                Thread thread = new Thread(r);
-                thread.setDaemon(true);
-                thread.setName("flush-to-disk");
-                return thread;
-            }).execute(this::flush);
+            ioWorkers.execute(this::flush);
         }
     }
 
@@ -87,6 +88,7 @@ public class MappedFile {
     public void flushLast() {
         mappedByteBuffer.force();
         System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush last to disk");
+        ioWorkers.shutdown();
     }
 
     /**
