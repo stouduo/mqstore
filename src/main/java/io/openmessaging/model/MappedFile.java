@@ -46,17 +46,6 @@ public class MappedFile {
     private long lastFlushFileSize = 0;
 
     private AtomicLong writeSize = new AtomicLong(0);
-    private static ScheduledExecutorService ioWorker = Executors.newSingleThreadScheduledExecutor((r) -> {
-        Thread thread = new Thread(r);
-        thread.setDaemon(true);
-        thread.setName("flush-to-disk");
-        return thread;
-    });
-    private AtomicBoolean doFlush = new AtomicBoolean(false);
-
-    public void enableFlush() {
-        doFlush.compareAndSet(false, true);
-    }
 
     public MappedFile setFileFlushSize(int size) {
         this.fileFlushSize = size;
@@ -69,9 +58,6 @@ public class MappedFile {
         this.file = new File(fileDirPath);
         if (!file.exists()) file.mkdirs();
         this.file = new File(fileDirPath + File.separator + fileName);
-        if (async) {
-            ioWorker.scheduleAtFixedRate(this::flush, 0, 10, TimeUnit.MILLISECONDS);
-        }
         try {
             file.delete();
             file.createNewFile();
@@ -80,16 +66,27 @@ public class MappedFile {
         }
         this.fileSize = fileSize;
         boundChannelToByteBuffer();
+        if (async) {
+            Executors.newFixedThreadPool(1, (r) -> {
+                Thread thread = new Thread(r);
+                thread.setDaemon(true);
+                thread.setName("flush-to-disk");
+                return thread;
+            }).execute(this::flush);
+        }
     }
 
     private void flush() {
-        if (doFlush.get()) {
-            doFlush.compareAndSet(true, false);
-            mappedByteBuffer.force();
-//            clean();
-//            lastFlushFileSize = writeSize.get();
-            System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+        while (mappedByteBuffer.hasRemaining()) {
+            Thread.yield();
         }
+        mappedByteBuffer.force();
+        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush " + fileName + " to disk:" + (writeSize.get() / 1024 / 1024) + "M");
+    }
+
+    public void flushLast() {
+        mappedByteBuffer.force();
+        System.out.println(new SimpleDateFormat("yyyy-MM-dd HH:mm:ss,SSS").format(new Date()) + "--" + Thread.currentThread().getName() + "-" + Thread.currentThread().getId() + ": flush last to disk");
     }
 
     /**

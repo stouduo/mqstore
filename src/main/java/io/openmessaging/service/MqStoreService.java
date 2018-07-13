@@ -20,7 +20,7 @@ public class MqStoreService {
     private static String filePath = Config.rootPath + Config.mqStorePath;
     private static long logicOffset = 0;
     private static int indexCount = Config.indexCount;
-    private static int msgSize = 64;
+    private static int msgSize = 32;
     private static Map<String, QueueStoreData> storeDatas = new ConcurrentHashMap<>();
     private AtomicBoolean clearDirectBuff = new AtomicBoolean(false);
 //    private IndexService indexService;
@@ -49,28 +49,28 @@ public class MqStoreService {
 
     public synchronized void put(String queueName, byte[] message) {
         QueueStoreData storeData = storeDatas.get(queueName);
-        synchronized (this) {
+        MappedFile writableFile;
+        int size;
+        ByteBuffer dirtyData;
+        int dirtyDataLen;
+        synchronized (queueName.intern()) {
             if (storeData == null) {
                 storeDatas.put(queueName, new QueueStoreData());
                 storeData = storeDatas.get(queueName);
             }
-
-            MappedFile writableFile;
             storeData.putDirtyData(message.length, message, msgSize - 4 - message.length);
-            int size = storeData.updateSize();
+            size = storeData.updateSize();
+            dirtyData = storeData.getDirtyData();
+            dirtyDataLen = dirtyData.position();
+        }
+        synchronized (this) {
             if (size % indexCount == 0) {
                 long fileOffset = logicOffset % storeFileSize;
-                ByteBuffer dirtyData = storeData.getDirtyData();
-                int dirtyDataLen = dirtyData.position();
                 if (fileOffset == 0) {
-                    if (storeFiles.size() > 0) {
-                        storeFiles.get(storeFiles.size() - 1).enableFlush();
-                    }
                     storeFiles.add(create());
                 }
                 writableFile = storeFiles.get(storeFiles.size() - 1);
                 if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
-                    writableFile.enableFlush();
                     writableFile = create();
                     storeFiles.add(writableFile);
                     logicOffset += storeFileSize - fileOffset;
@@ -83,27 +83,33 @@ public class MqStoreService {
     }
 
     private void flushLastBlock() {
+        List<MappedFile> writableFiles = new ArrayList<>();
         storeDatas.forEach((k, v) -> {
             long fileOffset = logicOffset % storeFileSize;
             ByteBuffer dirtyData = v.getDirtyData();
             int dirtyDataLen = dirtyData.position();
-            if (fileOffset == 0) {
-                storeFiles.add(create());
+            if (dirtyDataLen > 0) {
+                if (fileOffset == 0) {
+                    storeFiles.add(create());
+                }
+                MappedFile writableFile = storeFiles.get(storeFiles.size() - 1);
+                if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
+                    writableFile = create();
+                    storeFiles.add(writableFile);
+                    logicOffset += storeFileSize - fileOffset;
+                }
+                v.index(v.getSize() + indexCount, logicOffset);
+                writableFile.appendData(dirtyData);
+                if (!writableFiles.contains(writableFile))
+                    writableFiles.add(writableFile);
+                logicOffset += dirtyDataLen;
             }
-            MappedFile writableFile = storeFiles.get(storeFiles.size() - 1);
-            if (offsetOutOfBound(fileOffset, dirtyDataLen)) {
-                writableFile = create();
-                storeFiles.add(writableFile);
-                logicOffset += storeFileSize - fileOffset;
-            }
-            v.index(v.getSize() + indexCount, logicOffset);
-            writableFile.appendData(dirtyData);
-            logicOffset += dirtyDataLen;
         });
+        writableFiles.forEach(file -> file.flushLast());
     }
 
     public List<byte[]> get(String queueName, long startIndex, int num) {
-        synchronized (this) {
+        synchronized (storeDatas) {
             if (!clearDirectBuff.get()) {
                 flushLastBlock();
                 clearDirectBuff.compareAndSet(false, true);

@@ -1,5 +1,6 @@
 package io.openmessaging.model;
 
+import io.openmessaging.config.Config;
 import sun.nio.ch.DirectBuffer;
 
 import java.nio.ByteBuffer;
@@ -10,15 +11,15 @@ public class QueueStoreData {
     private AtomicInteger size;
     private ByteBuffer dirtyData;
     private long[] indices;
-    private static int indexCount = 64;
+    private static int indexCount = Config.indexCount;
     private static int count = 0;
 
     public QueueStoreData() {
         this.size = new AtomicInteger(0);
         if (count++ % 4 == 0) {
-            this.dirtyData = ByteBuffer.allocate(4096);
+            this.dirtyData = ByteBuffer.allocate(2048);
         } else {
-            this.dirtyData = ByteBuffer.allocateDirect(4096);
+            this.dirtyData = ByteBuffer.allocateDirect(2048);
         }
         this.indices = new long[32];
     }

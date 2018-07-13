@@ -19,7 +19,7 @@ public class Config {
     public static int defaultStoreSize = 1024 * 1024 * 1024;
     public static int defaultFlushInterval = 1000;
     public static int defaultFlushSize = 1024 * 512;
-    public static int defaultIndexCount = 40;
+    public static int defaultIndexCount = 64;
     private static ConcurrentMap<String, String> configs = new ConcurrentHashMap<>();
 
     static {
