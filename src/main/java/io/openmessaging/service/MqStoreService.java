@@ -36,9 +36,11 @@ public class MqStoreService {
         storeDatas.putIfAbsent(queueName, new QueueStoreData());
         MappedFile writableFile;
         QueueStoreData storeData = storeDatas.get(queueName);
-        synchronized (this) {
+        synchronized (queueName.intern()) {
             storeData.putDirtyData(message.length).putDirtyData(message);
             storeData.updateSize();
+        }
+        synchronized (this) {
             if (storeData.getSize() % indexCount == 0) {
                 long fileOffset = logicOffset % storeFileSize;
                 ByteBuffer dirtyData = storeData.getDirtyData();
